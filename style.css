@@ -53,7 +53,7 @@ a { color: var(--azul-500); }
   position: sticky; top: 0; z-index: 50;
 }
 .topbar .wrap { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.topbar img { height: 44px; width: 44px; object-fit: contain; border-radius: 8px; background: #fff; padding: 3px; }
+.topbar img { height: 62px; width: 62px; object-fit: contain; border-radius: 10px; background: #fff; padding: 3px; }
 .topbar .marca { line-height: 1.15; }
 .topbar .marca b { display: block; font-size: 16px; letter-spacing: .3px; }
 .topbar .marca span { font-size: 12px; opacity: .8; text-transform: uppercase; letter-spacing: 1.1px; }
@@ -257,6 +257,7 @@ table.t tr.podio3 td { background: #fdf1e7; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
+  .topbar img { height: 48px; width: 48px; }
   .hero h1 { font-size: 22px; }
   .evento { flex-direction: column; }
   .evento .acciones { flex-direction: row; width: 100%; }
