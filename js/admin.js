@@ -15,6 +15,35 @@
     tabEv: 'clases', tabCfg: 'temporadas'
   };
 
+  // Roles habilitados por función (debe reflejar las políticas RLS de supabase/schema.sql)
+  const ROL_ADMIN     = ['admin'];
+  const ROL_COMISION  = ['admin', 'comision'];       // eventos, temporadas, clases, docs, checklist
+  const ROL_OFICIAL   = ['admin', 'comision', 'oficial'];   // pruebas y resultados
+  const ROL_SECRETARIA = ['admin', 'comision', 'secretaria']; // inscripciones
+  const puede = roles => !roles || roles.includes(st.rol);
+
+  const TABS_EV = { clases: ROL_COMISION, docs: ROL_COMISION, insc: ROL_SECRETARIA,
+                     pruebas: ROL_OFICIAL, org: ROL_COMISION, difusion: null };
+
+  /** Muestra/oculta según el rol los controles que disparan escrituras restringidas por RLS. */
+  function aplicarPermisosUI() {
+    U.$('#btnNuevoEvento').style.display = puede(ROL_COMISION) ? '' : 'none';
+    U.$('#btnEditarEvento').style.display = puede(ROL_COMISION) ? '' : 'none';
+    U.$('#selEstado').style.display = puede(ROL_COMISION) ? '' : 'none';
+    const navConfig = U.$('#nav a[data-v="config"]');
+    if (navConfig) navConfig.style.display = puede(ROL_COMISION) ? '' : 'none';
+    Object.keys(TABS_EV).forEach(t => {
+      const btn = U.$('#tabsEv button[data-t="' + t + '"]');
+      if (btn) btn.style.display = puede(TABS_EV[t]) ? '' : 'none';
+    });
+    const btnUsuarios = U.$('#tabsCfg button[data-t="usuarios"]');
+    if (btnUsuarios) btnUsuarios.style.display = puede(ROL_ADMIN) ? '' : 'none';
+    if (!puede(TABS_EV[st.tabEv])) {
+      st.tabEv = Object.keys(TABS_EV).find(t => puede(TABS_EV[t])) || 'difusion';
+      U.$$('#tabsEv button').forEach(b => b.classList.toggle('on', b.dataset.t === st.tabEv));
+    }
+  }
+
   // =========================================================================
   // AUTENTICACIÓN
   // =========================================================================
@@ -54,6 +83,7 @@
     U.$('#login').style.display = 'none';
     U.$('#app').style.display = '';
     U.$('#nav').style.display = '';
+    aplicarPermisosUI();
     U.$$('#nav a[data-v]').forEach(a => a.addEventListener('click', e => {
       e.preventDefault();
       U.$$('#nav a[data-v]').forEach(x => x.classList.remove('on'));
