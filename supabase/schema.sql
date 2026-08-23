@@ -58,6 +58,36 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
+-- comision: ABM de eventos, clases, temporadas, documentos y checklist
+create or replace function public.es_comision()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.usuarios_autorizados u
+    where lower(u.email) = lower(coalesce(auth.jwt() ->> 'email',''))
+      and u.activo and u.rol in ('admin','comision')
+  );
+$$;
+
+-- oficial: carga de pruebas y resultados (además de comision/admin)
+create or replace function public.es_oficial()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.usuarios_autorizados u
+    where lower(u.email) = lower(coalesce(auth.jwt() ->> 'email',''))
+      and u.activo and u.rol in ('admin','comision','oficial')
+  );
+$$;
+
+-- secretaria: gestión de inscripciones y cobros (además de comision/admin)
+create or replace function public.es_secretaria()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.usuarios_autorizados u
+    where lower(u.email) = lower(coalesce(auth.jwt() ->> 'email',''))
+      and u.activo and u.rol in ('admin','comision','secretaria')
+  );
+$$;
+
 -- ---------------------------------------------------------------------------
 -- 2. TEMPORADAS
 -- ---------------------------------------------------------------------------
@@ -407,13 +437,13 @@ drop policy if exists temporadas_read on public.temporadas;
 create policy temporadas_read on public.temporadas for select to anon, authenticated using (true);
 drop policy if exists temporadas_write on public.temporadas;
 create policy temporadas_write on public.temporadas for all to authenticated
-  using (public.es_usuario_habilitado()) with check (public.es_usuario_habilitado());
+  using (public.es_comision()) with check (public.es_comision());
 
 drop policy if exists clases_read on public.clases;
 create policy clases_read on public.clases for select to anon, authenticated using (true);
 drop policy if exists clases_write on public.clases;
 create policy clases_write on public.clases for all to authenticated
-  using (public.es_usuario_habilitado()) with check (public.es_usuario_habilitado());
+  using (public.es_comision()) with check (public.es_comision());
 
 -- --- eventos: público ve todo lo que no es borrador ------------------------
 drop policy if exists eventos_read on public.eventos;
@@ -421,13 +451,13 @@ create policy eventos_read on public.eventos for select to anon, authenticated
   using (estado <> 'borrador' or public.es_usuario_habilitado());
 drop policy if exists eventos_write on public.eventos;
 create policy eventos_write on public.eventos for all to authenticated
-  using (public.es_usuario_habilitado()) with check (public.es_usuario_habilitado());
+  using (public.es_comision()) with check (public.es_comision());
 
 drop policy if exists ec_read on public.evento_clases;
 create policy ec_read on public.evento_clases for select to anon, authenticated using (true);
 drop policy if exists ec_write on public.evento_clases;
 create policy ec_write on public.evento_clases for all to authenticated
-  using (public.es_usuario_habilitado()) with check (public.es_usuario_habilitado());
+  using (public.es_comision()) with check (public.es_comision());
 
 -- --- documentos: público ve solo los publicados ----------------------------
 drop policy if exists docs_read on public.documentos_regata;
@@ -435,7 +465,7 @@ create policy docs_read on public.documentos_regata for select to anon, authenti
   using (publicado or public.es_usuario_habilitado());
 drop policy if exists docs_write on public.documentos_regata;
 create policy docs_write on public.documentos_regata for all to authenticated
-  using (public.es_usuario_habilitado()) with check (public.es_usuario_habilitado());
+  using (public.es_comision()) with check (public.es_comision());
 
 -- --- inscripciones: ALTA PÚBLICA controlada --------------------------------
 -- El anónimo puede INSERTAR solo si el evento tiene la inscripción abierta y
@@ -462,25 +492,25 @@ create policy insc_read_comision on public.inscripciones for select to authentic
 
 drop policy if exists insc_write_comision on public.inscripciones;
 create policy insc_write_comision on public.inscripciones for all to authenticated
-  using (public.es_usuario_habilitado()) with check (public.es_usuario_habilitado());
+  using (public.es_secretaria()) with check (public.es_secretaria());
 
 -- --- pruebas y resultados: lectura pública ---------------------------------
 drop policy if exists pruebas_read on public.pruebas;
 create policy pruebas_read on public.pruebas for select to anon, authenticated using (true);
 drop policy if exists pruebas_write on public.pruebas;
 create policy pruebas_write on public.pruebas for all to authenticated
-  using (public.es_usuario_habilitado()) with check (public.es_usuario_habilitado());
+  using (public.es_oficial()) with check (public.es_oficial());
 
 drop policy if exists resultados_read on public.resultados;
 create policy resultados_read on public.resultados for select to anon, authenticated using (true);
 drop policy if exists resultados_write on public.resultados;
 create policy resultados_write on public.resultados for all to authenticated
-  using (public.es_usuario_habilitado()) with check (public.es_usuario_habilitado());
+  using (public.es_oficial()) with check (public.es_oficial());
 
 -- --- checklist: solo comisión ----------------------------------------------
 drop policy if exists tareas_all on public.tareas_evento;
 create policy tareas_all on public.tareas_evento for all to authenticated
-  using (public.es_usuario_habilitado()) with check (public.es_usuario_habilitado());
+  using (public.es_comision()) with check (public.es_comision());
 
 -- Vista pública de inscriptos (security_invoker para que respete RLS del anon
 -- no aplica: la vista se expone explícitamente como de solo lectura pública)
@@ -533,16 +563,16 @@ create policy insc_docs_insert_publico on storage.objects for insert to anon, au
 
 drop policy if exists insc_docs_read_comision on storage.objects;
 create policy insc_docs_read_comision on storage.objects for select to authenticated
-  using (bucket_id = 'inscripciones-docs' and public.es_usuario_habilitado());
+  using (bucket_id = 'inscripciones-docs' and public.es_secretaria());
 
 drop policy if exists insc_docs_update_comision on storage.objects;
 create policy insc_docs_update_comision on storage.objects for update to authenticated
-  using (bucket_id = 'inscripciones-docs' and public.es_usuario_habilitado())
-  with check (bucket_id = 'inscripciones-docs' and public.es_usuario_habilitado());
+  using (bucket_id = 'inscripciones-docs' and public.es_secretaria())
+  with check (bucket_id = 'inscripciones-docs' and public.es_secretaria());
 
 drop policy if exists insc_docs_delete_comision on storage.objects;
 create policy insc_docs_delete_comision on storage.objects for delete to authenticated
-  using (bucket_id = 'inscripciones-docs' and public.es_usuario_habilitado());
+  using (bucket_id = 'inscripciones-docs' and public.es_secretaria());
 
 -- ============================================================================
 -- FIN DEL ESQUEMA
