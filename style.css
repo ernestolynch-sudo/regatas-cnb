@@ -74,6 +74,15 @@ a { color: var(--azul-500); }
 .hero h1 { margin: 0 0 6px; font-size: 27px; letter-spacing: -.3px; }
 .hero p { margin: 0; opacity: .88; max-width: 720px; }
 
+/* Portada del calendario público: foto de regata con degradé de marca superpuesto */
+#vistaLista .hero {
+  background-image: linear-gradient(160deg, rgba(7,42,63,.86) 0%, rgba(27,108,168,.72) 100%),
+                     url('assets/hero-regatas.jpg');
+  background-size: cover;
+  background-position: center 62%;
+  padding: 48px 0 56px;
+}
+
 /* ---------- Tarjetas ---------- */
 .card {
   background: var(--blanco); border: 1px solid var(--gris-300);
