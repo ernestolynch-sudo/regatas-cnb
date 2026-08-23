@@ -83,6 +83,15 @@ a { color: var(--azul-500); }
   padding: 48px 0 56px;
 }
 
+/* Ficha de evento (Clases, Documentos, Inscriptos, Resultados): foto de flota en acción */
+#vistaDetalle .hero {
+  background-image: linear-gradient(160deg, rgba(7,42,63,.86) 0%, rgba(15,76,117,.72) 100%),
+                     url('assets/hero-resultados.jpg');
+  background-size: cover;
+  background-position: center 55%;
+  padding: 48px 0 56px;
+}
+
 /* ---------- Tarjetas ---------- */
 .card {
   background: var(--blanco); border: 1px solid var(--gris-300);
