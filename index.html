@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regatas · Club Náutico Bariloche</title>
+<meta name="description" content="Calendario de regatas, avisos, instrucciones, inscripciones y resultados del Club Náutico Bariloche — lago Nahuel Huapi.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <img src="assets/logo-cnb.jpg" alt="CNB" onerror="this.style.display='none'">
+    <div class="marca"><b>Club Náutico Bariloche</b><span>Comisión de Vela y Motor</span></div>
+    <nav>
+      <a href="index.html" class="on">Calendario</a>
+      <a href="#" id="navResultados">Resultados</a>
+      <a href="admin.html">Panel de comisión</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ===================== LISTADO ===================== -->
+<div id="vistaLista">
+  <div class="hero">
+    <div class="wrap">
+      <h1>Calendario de Regatas</h1>
+      <p>Temporada <span id="temporadaNombre">—</span> · Lago Nahuel Huapi. Avisos de regata, instrucciones,
+         inscripciones en línea y resultados oficiales de la Comisión de Vela y Motor.</p>
+    </div>
+  </div>
+
+  <div class="wrap" style="margin-top:-18px">
+    <div class="card">
+      <div class="row">
+        <div style="min-width:170px">
+          <label for="fTemporada">Temporada</label>
+          <select id="fTemporada"></select>
+        </div>
+        <div style="min-width:160px">
+          <label for="fTipo">Tipo</label>
+          <select id="fTipo"><option value="">Todos</option></select>
+        </div>
+        <div style="min-width:160px">
+          <label for="fClase">Clase</label>
+          <select id="fClase"><option value="">Todas</option></select>
+        </div>
+        <div style="min-width:170px">
+          <label for="fEstado">Estado</label>
+          <select id="fEstado">
+            <option value="">Todos</option>
+            <option value="proximos" selected>Próximos y en curso</option>
+            <option value="inscripcion_abierta">Con inscripción abierta</option>
+            <option value="finalizado">Finalizados</option>
+          </select>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn sec" id="btnICS" title="Descargar el calendario para Google Calendar / Apple Calendario">↓ Calendario .ics</button>
+      </div>
+    </div>
+
+    <div class="grid g4" id="kpis" style="margin-bottom:16px"></div>
+    <div id="listaEventos"></div>
+  </div>
+</div>
+
+<!-- ===================== DETALLE ===================== -->
+<div id="vistaDetalle" style="display:none">
+  <div class="hero">
+    <div class="wrap">
+      <div style="font-size:13px;opacity:.8;margin-bottom:6px">
+        <a href="index.html" style="color:#fff">&larr; Volver al calendario</a>
+      </div>
+      <h1 id="evNombre">—</h1>
+      <p id="evSub">—</p>
+    </div>
+  </div>
+
+  <div class="wrap" style="margin-top:18px">
+    <div class="tabs" id="tabsDetalle">
+      <button data-t="info" class="on">Información</button>
+      <button data-t="aviso">Aviso de Regata</button>
+      <button data-t="ir">Instrucciones</button>
+      <button data-t="inscriptos">Inscriptos</button>
+      <button data-t="resultados">Resultados</button>
+    </div>
+    <div id="panelDetalle"></div>
+  </div>
+</div>
+
+<footer class="pie">
+  <div class="wrap">
+    <strong>Club Náutico Bariloche</strong> — Comisión de Vela y Motor · Lago Nahuel Huapi, San Carlos de Bariloche, Río Negro.<br>
+    Regatas conforme al Reglamento de Regatas a Vela 2025-2028 de World Sailing y a las Prescripciones de la Federación Argentina de Yachting.
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="js/db.js"></script>
+<script src="js/scoring.js"></script>
+<script src="js/docs.js"></script>
+<script src="js/publico.js"></script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inscripción · Regatas CNB</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <img src="assets/logo-cnb.jpg" alt="CNB" onerror="this.style.display='none'">
+    <div class="marca"><b>Club Náutico Bariloche</b><span>Comisión de Vela y Motor</span></div>
+    <nav><a href="index.html">Calendario</a></nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap-sm">
+    <h1>Formulario de Inscripción</h1>
+    <p id="evSub">Cargando datos del evento…</p>
+  </div>
+</div>
+
+<div class="wrap-sm" style="margin-top:18px">
+  <div id="avisos"></div>
+
+  <form id="frm" style="display:none">
+
+    <fieldset>
+      <legend>1 · Clase y embarcación</legend>
+      <div class="field">
+        <label for="clase_id">Clase en la que participa <span class="req">*</span></label>
+        <select id="clase_id" required></select>
+        <div class="hint" id="hintClase"></div>
+      </div>
+      <div class="grid g2">
+        <div class="field">
+          <label for="nombre_barco">Nombre del barco <span class="req">*</span></label>
+          <input type="text" id="nombre_barco" required maxlength="60">
+        </div>
+        <div class="field">
+          <label for="num_vela">Número de vela <span class="req">*</span></label>
+          <input type="text" id="num_vela" required maxlength="20" placeholder="ARG 1234">
+          <div class="hint">Tal como figura en la vela mayor. Es el identificador del barco en la regata.</div>
+        </div>
+      </div>
+      <div class="grid g2">
+        <div class="field">
+          <label for="modelo">Modelo / astillero</label>
+          <input type="text" id="modelo" maxlength="60">
+        </div>
+        <div class="field">
+          <label for="club">Club al que representa</label>
+          <input type="text" id="club" value="Club Náutico Bariloche" maxlength="80">
+        </div>
+      </div>
+      <div class="grid g2" id="boxRating" style="display:none">
+        <div class="field">
+          <label for="rating">Rating PHRF (segundos por milla náutica)</label>
+          <input type="number" id="rating" step="0.1" placeholder="ej. 120">
+          <div class="hint">Si no tenés rating asignado, dejalo vacío: la Comisión de Vela asignará uno provisorio.</div>
+        </div>
+        <div class="field">
+          <label for="rating_origen">Origen del rating</label>
+          <select id="rating_origen">
+            <option value="">— seleccionar —</option>
+            <option value="CNB">Asignado por el CNB</option>
+            <option value="FAY">Certificado FAY</option>
+            <option value="ORC">Certificado ORC</option>
+            <option value="provisorio">Provisorio / a definir</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="codigo_flota">Código de flota CNB (si corresponde)</label>
+        <input type="text" id="codigo_flota" maxlength="20" placeholder="OPT-C-001">
+        <div class="hint">Código del Registro de Flota de la Escuela de Vela, si el barco está registrado.</div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>2 · Timonel / responsable</legend>
+      <div class="grid g2">
+        <div class="field">
+          <label for="timonel_nombre">Apellido y nombre <span class="req">*</span></label>
+          <input type="text" id="timonel_nombre" required maxlength="80">
+        </div>
+        <div class="field">
+          <label for="timonel_dni">DNI / Pasaporte</label>
+          <input type="text" id="timonel_dni" maxlength="20">
+        </div>
+      </div>
+      <div class="grid g2">
+        <div class="field">
+          <label for="timonel_nacimiento">Fecha de nacimiento</label>
+          <input type="date" id="timonel_nacimiento">
+          <div class="hint" id="hintEdad"></div>
+        </div>
+        <div class="field">
+          <label for="timonel_licencia_fay">Licencia deportiva FAY</label>
+          <input type="text" id="timonel_licencia_fay" maxlength="30">
+        </div>
+      </div>
+      <div class="grid g2">
+        <div class="field">
+          <label for="timonel_email">Correo electrónico <span class="req">*</span></label>
+          <input type="email" id="timonel_email" required maxlength="120">
+        </div>
+        <div class="field">
+          <label for="timonel_tel">Teléfono de contacto <span class="req">*</span></label>
+          <input type="tel" id="timonel_tel" required maxlength="40" placeholder="+54 9 294 ...">
+        </div>
+      </div>
+      <div class="check">
+        <input type="checkbox" id="timonel_socio" checked>
+        <label for="timonel_socio">Soy socio del Club Náutico Bariloche</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>3 · Tripulación</legend>
+      <div id="tripulantes"></div>
+      <button type="button" class="btn ghost sm" id="btnAddTrip">+ Agregar tripulante</button>
+      <div class="hint" style="margin-top:7px">Cargá a todos los que van a bordo. Se usa para el control de
+        salidas y regresos, y para la cobertura de seguridad.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>4 · Seguridad y seguro</legend>
+      <div class="grid g2">
+        <div class="field">
+          <label for="emergencia_nombre">Contacto ante emergencia — nombre <span class="req">*</span></label>
+          <input type="text" id="emergencia_nombre" required maxlength="80">
+        </div>
+        <div class="field">
+          <label for="emergencia_tel">Contacto ante emergencia — teléfono <span class="req">*</span></label>
+          <input type="tel" id="emergencia_tel" required maxlength="40">
+        </div>
+      </div>
+      <div class="grid g3">
+        <div class="field">
+          <label for="seguro_compania">Compañía aseguradora</label>
+          <input type="text" id="seguro_compania" maxlength="80">
+        </div>
+        <div class="field">
+          <label for="seguro_poliza">Nº de póliza</label>
+          <input type="text" id="seguro_poliza" maxlength="40">
+        </div>
+        <div class="field">
+          <label for="seguro_vencimiento">Vencimiento</label>
+          <input type="date" id="seguro_vencimiento">
+        </div>
+      </div>
+      <div class="hint">Se exige seguro de responsabilidad civil frente a terceros vigente durante todo el
+        evento. Sin constancia de cobertura, el barco no será autorizado a largar.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>5 · Declaraciones obligatorias</legend>
+      <div class="check">
+        <input type="checkbox" id="acepta_rrv" required>
+        <label for="acepta_rrv">Declaro conocer y aceptar el <strong>Reglamento de Regatas a Vela 2025-2028</strong>
+          de World Sailing, las Prescripciones de la Federación Argentina de Yachting, las Reglas de Clase,
+          el Aviso de Regata y las Instrucciones de Regata de este evento. <span class="req">*</span></label>
+      </div>
+      <div class="check">
+        <input type="checkbox" id="acepta_riesgo" required>
+        <label for="acepta_riesgo"><strong>Declaración de riesgo (regla 3 del RRV).</strong> Acepto que la
+          responsabilidad de la decisión de participar en una prueba o de continuar en regata es solamente
+          mía. Reconozco que la vela puede entrañar riesgo y peligro, que es mi exclusiva responsabilidad la
+          aptitud física propia y de mi tripulación y el estado, flotabilidad y equipamiento de seguridad de
+          mi barco, y libero a la Autoridad Organizadora, al Comité de Regata, al Comité de Protestas y a sus
+          dependientes de toda responsabilidad por daño material, lesión personal o muerte vinculada al
+          evento. Me comprometo al uso permanente de chaleco salvavidas o ayuda a la flotabilidad
+          homologada mientras el barco esté en el agua. <span class="req">*</span></label>
+      </div>
+      <div class="check" id="boxMenor" style="display:none">
+        <input type="checkbox" id="autoriza_menor">
+        <label for="autoriza_menor">El timonel es <strong>menor de edad</strong> y cuenta con la autorización
+          firmada de su madre, padre o responsable legal, que se presentará antes de la primera señal de
+          atención.</label>
+      </div>
+      <div class="field">
+        <label for="observaciones">Observaciones</label>
+        <textarea id="observaciones" maxlength="600" placeholder="Requerimientos de guardería, necesidad de traslado, comentarios para la organización…"></textarea>
+      </div>
+    </fieldset>
+
+    <div class="card">
+      <div class="row">
+        <div class="small muted" style="flex:1;min-width:220px">
+          La inscripción queda en estado <strong>pendiente</strong> hasta que la Comisión verifique la
+          documentación y el pago del arancel.
+        </div>
+        <button type="submit" class="btn" id="btnEnviar">Enviar inscripción</button>
+      </div>
+    </div>
+  </form>
+
+  <div id="confirmacion" style="display:none"></div>
+</div>
+
+<footer class="pie">
+  <div class="wrap-sm">
+    <strong>Club Náutico Bariloche</strong> — Comisión de Vela y Motor · Lago Nahuel Huapi.
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="js/db.js"></script>
+<script src="js/inscripcion.js"></script>
+</body>
+</html>

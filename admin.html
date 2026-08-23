@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de Comisión · Regatas CNB</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <img src="assets/logo-cnb.jpg" alt="CNB" onerror="this.style.display='none'">
+    <div class="marca"><b>Panel de Comisión</b><span>Vela y Motor · Regatas</span></div>
+    <nav id="nav" style="display:none">
+      <a href="#" data-v="eventos" class="on">Eventos</a>
+      <a href="#" data-v="config">Configuración</a>
+      <a href="index.html">Ver portal público</a>
+      <button id="btnSalir">Cerrar sesión</button>
+    </nav>
+  </div>
+</header>
+
+<!-- ================= LOGIN ================= -->
+<div id="login" class="wrap-sm" style="margin-top:52px">
+  <div class="card">
+    <h2 class="mt0">Acceso de la Comisión de Vela y Motor</h2>
+    <p class="muted small">Ingresá tu correo. Vas a recibir un enlace de acceso (<em>magic link</em>).
+      Sólo funcionan los correos habilitados en el sistema.</p>
+    <div id="loginAviso"></div>
+    <div class="field">
+      <label for="email">Correo electrónico</label>
+      <input type="email" id="email" placeholder="nombre@dominio.com">
+    </div>
+    <button class="btn block" id="btnLogin">Enviar enlace de acceso</button>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" style="display:none">
+
+  <!-- ---------- Lista de eventos ---------- -->
+  <div id="vEventos" class="wrap" style="margin-top:20px">
+    <div class="card">
+      <div class="row">
+        <h2 class="mt0 mb0">Eventos</h2>
+        <select id="filTemporada" style="width:auto"></select>
+        <select id="filEstado" style="width:auto">
+          <option value="">Todos los estados</option>
+        </select>
+        <div class="spacer"></div>
+        <button class="btn" id="btnNuevoEvento">+ Nuevo evento</button>
+      </div>
+    </div>
+    <div id="tablaEventos"></div>
+  </div>
+
+  <!-- ---------- Ficha de evento ---------- -->
+  <div id="vEvento" class="wrap" style="display:none;margin-top:20px">
+    <div class="card">
+      <div class="row">
+        <button class="btn ghost sm" id="btnVolver">&larr; Eventos</button>
+        <h2 class="mt0 mb0" id="tEvNombre">—</h2>
+        <span id="tEvEstado"></span>
+        <div class="spacer"></div>
+        <select id="selEstado" style="width:auto"></select>
+        <button class="btn sec sm" id="btnEditarEvento">Editar datos</button>
+      </div>
+    </div>
+    <div class="tabs" id="tabsEv">
+      <button data-t="clases" class="on">Clases y puntaje</button>
+      <button data-t="docs">Aviso e Instrucciones</button>
+      <button data-t="insc">Inscripciones</button>
+      <button data-t="pruebas">Pruebas y resultados</button>
+      <button data-t="org">Organización</button>
+      <button data-t="difusion">Difusión</button>
+    </div>
+    <div id="panelEv"></div>
+  </div>
+
+  <!-- ---------- Configuración ---------- -->
+  <div id="vConfig" class="wrap" style="display:none;margin-top:20px">
+    <div class="tabs" id="tabsCfg">
+      <button data-t="temporadas" class="on">Temporadas</button>
+      <button data-t="clases">Clases</button>
+      <button data-t="usuarios">Usuarios habilitados</button>
+    </div>
+    <div id="panelCfg"></div>
+  </div>
+</div>
+
+<div id="modales"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="config.js"></script>
+<script src="js/db.js"></script>
+<script src="js/scoring.js"></script>
+<script src="js/docs.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

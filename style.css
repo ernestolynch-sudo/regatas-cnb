@@ -1,0 +1,258 @@
+/* ============================================================================
+   Sistema de Regatas — Club Náutico Bariloche
+   Hoja de estilos única (portal público, inscripción y panel de comisión)
+   ==========================================================================*/
+:root {
+  --azul-900: #072a3f;
+  --azul-800: #0b3d5c;
+  --azul-700: #0f4c75;
+  --azul-500: #1b6ca8;
+  --azul-300: #6fa8c9;
+  --azul-050: #eef5fa;
+  --naranja:  #e8590c;
+  --naranja-050: #fff2e8;
+  --verde:    #1f7a4d;
+  --verde-050:#e9f6ef;
+  --rojo:     #b3261e;
+  --rojo-050: #fdecea;
+  --gris-900: #16202a;
+  --gris-700: #40515f;
+  --gris-500: #7a8994;
+  --gris-300: #ccd6dd;
+  --gris-100: #eef1f4;
+  --gris-050: #f7f9fb;
+  --blanco:   #ffffff;
+  --radio: 10px;
+  --sombra: 0 1px 3px rgba(7,42,63,.10), 0 6px 18px rgba(7,42,63,.06);
+  --fuente: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--fuente);
+  color: var(--gris-900);
+  background: var(--gris-050);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--azul-500); }
+
+/* ---------- Layout ---------- */
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 18px; }
+.wrap-sm { max-width: 780px; margin: 0 auto; padding: 0 18px; }
+
+/* ---------- Encabezado ---------- */
+.topbar {
+  background: linear-gradient(135deg, var(--azul-900), var(--azul-700));
+  color: #fff;
+  padding: 14px 0;
+  box-shadow: var(--sombra);
+  position: sticky; top: 0; z-index: 50;
+}
+.topbar .wrap { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.topbar img { height: 44px; width: 44px; object-fit: contain; border-radius: 8px; background: #fff; padding: 3px; }
+.topbar .marca { line-height: 1.15; }
+.topbar .marca b { display: block; font-size: 16px; letter-spacing: .3px; }
+.topbar .marca span { font-size: 12px; opacity: .8; text-transform: uppercase; letter-spacing: 1.1px; }
+.topbar nav { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; }
+.topbar nav a, .topbar nav button {
+  color: #fff; text-decoration: none; font-size: 14px; padding: 7px 13px;
+  border-radius: 999px; border: 1px solid transparent; background: transparent; cursor: pointer;
+  font-family: inherit;
+}
+.topbar nav a:hover, .topbar nav button:hover { background: rgba(255,255,255,.14); }
+.topbar nav a.on { background: #fff; color: var(--azul-800); font-weight: 600; }
+
+/* ---------- Hero ---------- */
+.hero {
+  background: linear-gradient(160deg, var(--azul-800) 0%, var(--azul-500) 100%);
+  color: #fff; padding: 34px 0 40px;
+}
+.hero h1 { margin: 0 0 6px; font-size: 27px; letter-spacing: -.3px; }
+.hero p { margin: 0; opacity: .88; max-width: 720px; }
+
+/* ---------- Tarjetas ---------- */
+.card {
+  background: var(--blanco); border: 1px solid var(--gris-300);
+  border-radius: var(--radio); box-shadow: var(--sombra); padding: 18px; margin-bottom: 16px;
+}
+.card > h2, .card > h3 { margin-top: 0; }
+.grid { display: grid; gap: 14px; }
+.grid.g2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.grid.g3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.grid.g4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+
+h1, h2, h3 { line-height: 1.25; }
+h2 { font-size: 19px; }
+h3 { font-size: 16px; }
+.muted { color: var(--gris-500); }
+.small { font-size: 13px; }
+.mono { font-family: var(--mono); }
+.right { text-align: right; }
+.center { text-align: center; }
+.mt0 { margin-top: 0; } .mb0 { margin-bottom: 0; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row.end { justify-content: flex-end; }
+.spacer { flex: 1; }
+
+/* ---------- Chips / estados ---------- */
+.chip {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; letter-spacing: .2px; white-space: nowrap;
+  background: var(--gris-100); color: var(--gris-700); border: 1px solid var(--gris-300);
+}
+.chip.azul   { background: var(--azul-050);    color: var(--azul-700); border-color: var(--azul-300); }
+.chip.verde  { background: var(--verde-050);   color: var(--verde);    border-color: #9ed3b8; }
+.chip.naranja{ background: var(--naranja-050); color: var(--naranja);  border-color: #f5c0a0; }
+.chip.rojo   { background: var(--rojo-050);    color: var(--rojo);     border-color: #eab3ae; }
+
+/* ---------- Botones ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px; justify-content: center;
+  padding: 9px 16px; border-radius: 8px; border: 1px solid var(--azul-700);
+  background: var(--azul-700); color: #fff; font-size: 14px; font-weight: 600;
+  cursor: pointer; text-decoration: none; font-family: inherit; line-height: 1.2;
+}
+.btn:hover { background: var(--azul-800); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.sec { background: #fff; color: var(--azul-700); }
+.btn.sec:hover { background: var(--azul-050); }
+.btn.ghost { background: transparent; border-color: var(--gris-300); color: var(--gris-700); }
+.btn.ghost:hover { background: var(--gris-100); }
+.btn.warn { background: var(--naranja); border-color: var(--naranja); }
+.btn.danger { background: var(--rojo); border-color: var(--rojo); }
+.btn.ok { background: var(--verde); border-color: var(--verde); }
+.btn.sm { padding: 5px 11px; font-size: 13px; }
+.btn.block { width: 100%; }
+
+/* ---------- Formularios ---------- */
+label { display: block; font-size: 13px; font-weight: 600; color: var(--gris-700); margin-bottom: 4px; }
+label .req { color: var(--rojo); }
+input[type=text], input[type=email], input[type=tel], input[type=number], input[type=date],
+input[type=time], input[type=datetime-local], select, textarea {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--gris-300); border-radius: 8px;
+  font-family: inherit; font-size: 14px; background: #fff; color: var(--gris-900);
+}
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--azul-500); box-shadow: 0 0 0 3px rgba(27,108,168,.15);
+}
+textarea { min-height: 84px; resize: vertical; }
+.field { margin-bottom: 13px; }
+.hint { font-size: 12px; color: var(--gris-500); margin-top: 3px; }
+.check { display: flex; gap: 9px; align-items: flex-start; margin-bottom: 10px; font-size: 14px; }
+.check input { margin-top: 3px; flex-shrink: 0; width: 17px; height: 17px; }
+.check label { font-weight: 400; color: var(--gris-900); margin: 0; }
+fieldset { border: 1px solid var(--gris-300); border-radius: var(--radio); padding: 14px 16px; margin: 0 0 16px; }
+legend { font-weight: 700; font-size: 14px; color: var(--azul-700); padding: 0 7px; text-transform: uppercase; letter-spacing: .6px; }
+
+/* ---------- Tablas ---------- */
+.tabla-wrap { overflow-x: auto; border: 1px solid var(--gris-300); border-radius: var(--radio); background: #fff; }
+table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.t th, table.t td { padding: 8px 11px; text-align: left; border-bottom: 1px solid var(--gris-100); white-space: nowrap; }
+table.t thead th {
+  background: var(--azul-050); color: var(--azul-800); font-size: 12px;
+  text-transform: uppercase; letter-spacing: .5px; position: sticky; top: 0;
+}
+table.t tbody tr:hover { background: var(--gris-050); }
+table.t td.num, table.t th.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.t .desc { color: var(--gris-500); font-style: italic; }
+table.t tr.podio1 td { background: #fff8e1; font-weight: 600; }
+table.t tr.podio2 td { background: #f4f6f7; }
+table.t tr.podio3 td { background: #fdf1e7; }
+
+/* ---------- Calendario ---------- */
+.evento {
+  display: flex; gap: 16px; align-items: flex-start; padding: 15px;
+  border: 1px solid var(--gris-300); border-radius: var(--radio); background: #fff;
+  margin-bottom: 11px; box-shadow: var(--sombra);
+}
+.evento .fecha {
+  flex-shrink: 0; width: 70px; text-align: center; background: var(--azul-800);
+  color: #fff; border-radius: 8px; padding: 8px 4px; line-height: 1.1;
+}
+.evento .fecha .d { font-size: 24px; font-weight: 700; display: block; }
+.evento .fecha .m { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: .85; }
+.evento .fecha .y { font-size: 10px; opacity: .6; }
+.evento .cuerpo { flex: 1; min-width: 0; }
+.evento .cuerpo h3 { margin: 0 0 4px; font-size: 16px; }
+.evento .cuerpo h3 a { color: var(--azul-800); text-decoration: none; }
+.evento .cuerpo h3 a:hover { text-decoration: underline; }
+.evento .acciones { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+
+/* ---------- Documento de regata (aviso / instrucciones) ---------- */
+.doc-regata {
+  background: #fff; padding: 34px 40px; max-width: 830px; margin: 0 auto;
+  border: 1px solid var(--gris-300); border-radius: var(--radio);
+  font-size: 14px; line-height: 1.62;
+}
+.doc-regata .doc-head { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid var(--azul-800); padding-bottom: 12px; margin-bottom: 20px; }
+.doc-regata .doc-logo { height: 56px; width: 56px; object-fit: contain; }
+.doc-regata .doc-club { font-weight: 800; font-size: 16px; letter-spacing: 1.2px; color: var(--azul-800); }
+.doc-regata .doc-sub { font-size: 12px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--gris-500); }
+.doc-regata h1 { text-align: center; font-size: 21px; letter-spacing: 2px; margin: 6px 0 14px; color: var(--azul-900); }
+.doc-regata .doc-evento { text-align: center; background: var(--azul-050); border-radius: 8px; padding: 12px; margin-bottom: 24px; font-size: 14px; }
+.doc-regata .sec { margin-bottom: 15px; page-break-inside: avoid; }
+.doc-regata .sec h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .9px; color: var(--azul-800); border-bottom: 1px solid var(--gris-300); padding-bottom: 3px; margin: 0 0 7px; }
+.doc-regata .sec h2 .n { color: var(--naranja); }
+.doc-regata p { margin: 0 0 7px; text-align: justify; }
+.doc-regata ul { margin: 0 0 7px; padding-left: 22px; }
+.doc-regata table { width: 100%; border-collapse: collapse; margin: 7px 0; font-size: 13px; }
+.doc-regata table th, .doc-regata table td { border: 1px solid var(--gris-300); padding: 5px 8px; text-align: left; }
+.doc-regata table th { background: var(--azul-050); }
+.doc-regata code { background: var(--gris-100); padding: 1px 5px; border-radius: 4px; font-family: var(--mono); font-size: 12.5px; }
+.doc-regata .doc-foot { margin-top: 26px; border-top: 1px solid var(--gris-300); padding-top: 10px; font-size: 11px; color: var(--gris-500); }
+
+/* ---------- Avisos ---------- */
+.alert { padding: 11px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 14px; border: 1px solid; }
+.alert.info  { background: var(--azul-050);    border-color: var(--azul-300); color: var(--azul-800); }
+.alert.ok    { background: var(--verde-050);   border-color: #9ed3b8;         color: var(--verde); }
+.alert.warn  { background: var(--naranja-050); border-color: #f5c0a0;         color: var(--naranja); }
+.alert.error { background: var(--rojo-050);    border-color: #eab3ae;         color: var(--rojo); }
+
+/* ---------- Modal ---------- */
+.modal-bg { position: fixed; inset: 0; background: rgba(7,42,63,.55); display: flex; align-items: flex-start;
+  justify-content: center; padding: 26px 14px; overflow-y: auto; z-index: 100; }
+.modal { background: #fff; border-radius: 12px; width: 100%; max-width: 860px; box-shadow: 0 18px 46px rgba(0,0,0,.3); }
+.modal header { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--gris-300); }
+.modal header h2 { margin: 0; font-size: 17px; flex: 1; }
+.modal .body { padding: 18px; }
+.modal footer { padding: 13px 18px; border-top: 1px solid var(--gris-300); display: flex; gap: 9px; justify-content: flex-end; background: var(--gris-050); border-radius: 0 0 12px 12px; }
+.x { background: none; border: none; font-size: 24px; line-height: 1; cursor: pointer; color: var(--gris-500); padding: 0 4px; }
+
+/* ---------- Tabs ---------- */
+.tabs { display: flex; gap: 3px; border-bottom: 2px solid var(--gris-300); margin-bottom: 16px; overflow-x: auto; }
+.tabs button {
+  background: none; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px;
+  padding: 9px 15px; font-size: 14px; font-weight: 600; color: var(--gris-500);
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.tabs button.on { color: var(--azul-700); border-bottom-color: var(--naranja); }
+
+/* ---------- KPI ---------- */
+.kpi { background: #fff; border: 1px solid var(--gris-300); border-radius: var(--radio); padding: 14px; text-align: center; }
+.kpi .v { font-size: 28px; font-weight: 700; color: var(--azul-700); line-height: 1.1; }
+.kpi .l { font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--gris-500); margin-top: 3px; }
+
+/* ---------- Footer ---------- */
+.pie { background: var(--azul-900); color: rgba(255,255,255,.72); padding: 22px 0; margin-top: 40px; font-size: 13px; }
+.pie a { color: rgba(255,255,255,.9); }
+
+/* ---------- Impresión ---------- */
+@media print {
+  body { background: #fff; }
+  .topbar, .hero, .pie, .no-print, .tabs, .btn { display: none !important; }
+  .doc-regata { border: none; box-shadow: none; padding: 0; max-width: none; font-size: 11.5pt; }
+  .wrap, .wrap-sm { max-width: none; padding: 0; }
+  @page { size: A4; margin: 18mm 16mm; }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+  .hero h1 { font-size: 22px; }
+  .evento { flex-direction: column; }
+  .evento .acciones { flex-direction: row; width: 100%; }
+  .doc-regata { padding: 20px; }
+}
