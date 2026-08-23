@@ -125,6 +125,11 @@
       <button type="button" class="btn ghost sm" id="btnAddTrip">+ Agregar tripulante</button>
       <div class="hint" style="margin-top:7px">Cargá a todos los que van a bordo. Se usa para el control de
         salidas y regresos, y para la cobertura de seguridad.</div>
+      <div class="field" style="margin-top:13px">
+        <label for="trip_archivo">Listado de tripulantes firmado (PDF, opcional)</label>
+        <input type="file" id="trip_archivo" accept="application/pdf,image/*">
+        <div class="hint">Si el club exige un listado firmado en papel, subí acá la foto o el escaneo. Máx. 10 MB.</div>
+      </div>
     </fieldset>
 
     <fieldset>
@@ -153,12 +158,26 @@
           <input type="date" id="seguro_vencimiento">
         </div>
       </div>
+      <div class="field">
+        <label for="seguro_archivo">Constancia de seguro (PDF o foto)</label>
+        <input type="file" id="seguro_archivo" accept="application/pdf,image/*">
+      </div>
       <div class="hint">Se exige seguro de responsabilidad civil frente a terceros vigente durante todo el
         evento. Sin constancia de cobertura, el barco no será autorizado a largar.</div>
     </fieldset>
 
     <fieldset>
-      <legend>5 · Declaraciones obligatorias</legend>
+      <legend>5 · Comprobante de pago</legend>
+      <div class="field">
+        <label for="comprobante_archivo">Comprobante de pago del arancel (si ya abonaste)</label>
+        <input type="file" id="comprobante_archivo" accept="application/pdf,image/*">
+        <div class="hint">PDF o foto de la transferencia / depósito. Si todavía no pagaste, podés dejarlo vacío y
+          adjuntarlo más adelante contactando a la Comisión. Máx. 10 MB.</div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>6 · Declaraciones obligatorias</legend>
       <div class="check">
         <input type="checkbox" id="acepta_rrv" required>
         <label for="acepta_rrv">Declaro conocer y aceptar el <strong>Reglamento de Regatas a Vela 2025-2028</strong>

@@ -6,6 +6,21 @@
 (function () {
   'use strict';
   const E = { evento: null, clases: [], eventoClases: [] };
+  const MAX_ARCHIVO = 10 * 1024 * 1024; // 10 MB, igual al límite del bucket 'inscripciones-docs'
+
+  /** Sube un archivo a Storage bajo una carpeta única de la inscripción y devuelve su path, o null si no hay archivo. */
+  async function subirDoc(carpeta, inputId, nombreBase) {
+    const input = U.$('#' + inputId);
+    const file = input && input.files && input.files[0];
+    if (!file) return null;
+    if (file.size > MAX_ARCHIVO) throw new Error('El archivo "' + file.name + '" pesa más de 10 MB.');
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
+    const path = carpeta + '/' + nombreBase + '.' + ext;
+    const { error } = await db.storage.from('inscripciones-docs')
+      .upload(path, file, { upsert: true, contentType: file.type || undefined });
+    if (error) throw error;
+    return path;
+  }
 
   document.addEventListener('DOMContentLoaded', iniciar);
 
@@ -148,6 +163,20 @@
     const socio = U.$('#timonel_socio').checked;
     const monto = socio ? E.evento.arancel_socio : E.evento.arancel_invitado;
 
+    let seguro_archivo_path = null, tripulantes_archivo_path = null, comprobante_pago_path = null;
+    try {
+      const carpeta = crypto.randomUUID();
+      [seguro_archivo_path, tripulantes_archivo_path, comprobante_pago_path] = await Promise.all([
+        subirDoc(carpeta, 'seguro_archivo', 'seguro'),
+        subirDoc(carpeta, 'trip_archivo', 'tripulantes'),
+        subirDoc(carpeta, 'comprobante_archivo', 'comprobante')
+      ]);
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'Enviar inscripción';
+      U.aviso('#avisos', 'error', 'No se pudo subir un archivo adjunto: ' + U.esc(err.message || String(err)));
+      return;
+    }
+
     const reg = {
       evento_id: E.evento.id,
       clase_id: c.clase_id,
@@ -174,6 +203,7 @@
       seguro_compania: U.$('#seguro_compania').value.trim() || null,
       seguro_poliza: U.$('#seguro_poliza').value.trim() || null,
       seguro_vencimiento: U.$('#seguro_vencimiento').value || null,
+      seguro_archivo_path, tripulantes_archivo_path, comprobante_pago_path,
 
       acepta_rrv: U.$('#acepta_rrv').checked,
       acepta_riesgo: U.$('#acepta_riesgo').checked,

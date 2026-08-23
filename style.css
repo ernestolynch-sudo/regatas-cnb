@@ -136,9 +136,15 @@ input[type=time], input[type=datetime-local], select, textarea {
   width: 100%; padding: 9px 11px; border: 1px solid var(--gris-300); border-radius: 8px;
   font-family: inherit; font-size: 14px; background: #fff; color: var(--gris-900);
 }
+input[type=file] {
+  width: 100%; padding: 7px 9px; border: 1px dashed var(--gris-300); border-radius: 8px;
+  font-family: inherit; font-size: 13px; background: #fff; color: var(--gris-700);
+}
 input:focus, select:focus, textarea:focus {
   outline: none; border-color: var(--azul-500); box-shadow: 0 0 0 3px rgba(27,108,168,.15);
 }
+.doc-adjunto { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 8px; }
+.doc-adjunto .txt { flex: 1; min-width: 160px; font-size: 13px; }
 textarea { min-height: 84px; resize: vertical; }
 .field { margin-bottom: 13px; }
 .hint { font-size: 12px; color: var(--gris-500); margin-top: 3px; }

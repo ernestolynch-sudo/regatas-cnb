@@ -229,6 +229,12 @@ create table if not exists public.inscripciones (
   seguro_compania    text,
   seguro_poliza      text,
   seguro_vencimiento date,
+
+  -- Documentos adjuntos (Supabase Storage, bucket 'inscripciones-docs')
+  seguro_archivo_path      text,   -- constancia de seguro (PDF/foto)
+  tripulantes_archivo_path text,   -- listado de tripulantes firmado (PDF)
+  comprobante_pago_path    text,   -- comprobante de pago del arancel (PDF/foto)
+
   acepta_rrv         boolean not null default false,
   acepta_riesgo      boolean not null default false,   -- Regla 3 RRV — Decisión de regatear
   autoriza_menor     boolean not null default false,   -- autorización del responsable legal si el timonel es menor
@@ -505,6 +511,37 @@ on conflict (codigo) do nothing;
 insert into public.usuarios_autorizados (email, nombre, rol) values
   ('ernesto.lynch@buritec.com.ar', 'Ernesto Lynch', 'admin')
 on conflict (email) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- 15. STORAGE: documentos adjuntos a la inscripción
+-- (constancia de seguro, listado de tripulantes, comprobante de pago)
+-- ---------------------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('inscripciones-docs', 'inscripciones-docs', false, 10485760,
+        array['application/pdf','image/jpeg','image/png','image/heic','image/webp'])
+on conflict (id) do update set
+  file_size_limit    = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+-- El público (anon) puede SUBIR archivos al enviar el formulario de inscripción,
+-- pero no puede leerlos ni listarlos. Sólo la Comisión (es_usuario_habilitado)
+-- puede ver, reemplazar o borrar lo ya subido.
+drop policy if exists insc_docs_insert_publico on storage.objects;
+create policy insc_docs_insert_publico on storage.objects for insert to anon, authenticated
+  with check (bucket_id = 'inscripciones-docs');
+
+drop policy if exists insc_docs_read_comision on storage.objects;
+create policy insc_docs_read_comision on storage.objects for select to authenticated
+  using (bucket_id = 'inscripciones-docs' and public.es_usuario_habilitado());
+
+drop policy if exists insc_docs_update_comision on storage.objects;
+create policy insc_docs_update_comision on storage.objects for update to authenticated
+  using (bucket_id = 'inscripciones-docs' and public.es_usuario_habilitado())
+  with check (bucket_id = 'inscripciones-docs' and public.es_usuario_habilitado());
+
+drop policy if exists insc_docs_delete_comision on storage.objects;
+create policy insc_docs_delete_comision on storage.objects for delete to authenticated
+  using (bucket_id = 'inscripciones-docs' and public.es_usuario_habilitado());
 
 -- ============================================================================
 -- FIN DEL ESQUEMA

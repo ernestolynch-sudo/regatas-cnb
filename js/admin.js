@@ -576,6 +576,30 @@
     });
   }
 
+  const DOCS_INSC = [
+    { campo: 'seguro_archivo_path',      nombre: 'seguro',      txt: 'Constancia de seguro' },
+    { campo: 'tripulantes_archivo_path', nombre: 'tripulantes', txt: 'Listado de tripulantes' },
+    { campo: 'comprobante_pago_path',    nombre: 'comprobante', txt: 'Comprobante de pago' }
+  ];
+  const MAX_ARCHIVO = 10 * 1024 * 1024; // 10 MB, igual al límite del bucket 'inscripciones-docs'
+
+  async function verDocInsc(path) {
+    const { data, error } = await db.storage.from('inscripciones-docs').createSignedUrl(path, 120);
+    if (error) { alert('No se pudo abrir el archivo: ' + U.err(error)); return; }
+    window.open(data.signedUrl, '_blank');
+  }
+
+  async function subirDocInsc(inscripcionId, campo, nombreBase, file) {
+    if (file.size > MAX_ARCHIVO) { alert('El archivo pesa más de 10 MB.'); return null; }
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
+    const path = inscripcionId + '/' + nombreBase + '.' + ext;
+    const { error: eUp } = await db.storage.from('inscripciones-docs')
+      .upload(path, file, { upsert: true, contentType: file.type || undefined });
+    if (eUp) { alert('No se pudo subir el archivo: ' + U.err(eUp)); return null; }
+    await guardar('inscripciones', { id: inscripcionId, [campo]: path });
+    return path;
+  }
+
   function fichaInsc(i) {
     i = i || {};
     const trip = Array.isArray(i.tripulantes) ? i.tripulantes : [];
@@ -616,6 +640,15 @@
         <strong>Menor con autorización:</strong> ${i.autoriza_menor ? 'sí' : 'no'}</p>
         ${i.observaciones ? '<p class="small"><strong>Observaciones:</strong> ' + U.esc(i.observaciones) + '</p>' : ''}
       </fieldset>
+      <fieldset><legend>Documentos adjuntos</legend>
+        ${i.id ? DOCS_INSC.map(d => `
+          <div class="doc-adjunto">
+            <span class="txt">${i[d.campo] ? '<span class="chip verde">Sí</span>' : '<span class="chip rojo">Falta</span>'} ${U.esc(d.txt)}</span>
+            ${i[d.campo] ? `<button type="button" class="btn ghost sm" data-ver="${d.campo}">Ver</button>` : ''}
+            <input type="file" accept="application/pdf,image/*" data-subir="${d.campo}" data-nombre="${d.nombre}" style="width:auto;flex:1;min-width:180px">
+          </div>`).join('')
+        : '<p class="small muted">Guardá la inscripción para poder adjuntar documentos.</p>'}
+      </fieldset>
       <div class="field"><label>Motivo de rechazo (si corresponde)</label><input id="i_motivo_rechazo" value="${U.esc(i.motivo_rechazo || '')}"></div>`;
 
     const botones = [{ txt: 'Cancelar', cls: 'ghost' }];
@@ -643,7 +676,15 @@
       await refrescarEvento(); tabInsc();
     } });
 
-    modal(i.id ? 'Inscripción ' + (i.folio || '') : 'Nueva inscripción (carga manual)', html, botones);
+    const bg = modal(i.id ? 'Inscripción ' + (i.folio || '') : 'Nueva inscripción (carga manual)', html, botones);
+    U.$$('[data-ver]', bg).forEach(b => b.addEventListener('click', () => verDocInsc(i[b.dataset.ver])));
+    U.$$('[data-subir]', bg).forEach(inp => inp.addEventListener('change', async () => {
+      const file = inp.files[0];
+      if (!file) return;
+      const campo = inp.dataset.subir;
+      const path = await subirDocInsc(i.id, campo, inp.dataset.nombre, file);
+      if (path) { i[campo] = path; bg.remove(); fichaInsc(i); }
+    }));
   }
 
   function exportarInsc() {
@@ -662,6 +703,9 @@
       { titulo: 'Emergencia', valor: i => (i.emergencia_nombre || '') + ' ' + (i.emergencia_tel || '') },
       { titulo: 'Seguro', valor: i => (i.seguro_compania || '') + ' ' + (i.seguro_poliza || '') },
       { titulo: 'Vto. seguro', valor: 'seguro_vencimiento' },
+      { titulo: 'Doc. seguro', valor: i => i.seguro_archivo_path ? 'SI' : 'NO' },
+      { titulo: 'Doc. tripulantes', valor: i => i.tripulantes_archivo_path ? 'SI' : 'NO' },
+      { titulo: 'Doc. comprobante pago', valor: i => i.comprobante_pago_path ? 'SI' : 'NO' },
       { titulo: 'Estado', valor: 'estado' }, { titulo: 'Pago', valor: 'pago_estado' },
       { titulo: 'Monto', valor: 'monto' }, { titulo: 'Observaciones', valor: 'observaciones' }
     ];
