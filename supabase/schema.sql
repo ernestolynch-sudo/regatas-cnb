@@ -509,7 +509,8 @@ on conflict (codigo) do nothing;
 
 -- IMPORTANTE: cargar acá el email de cada integrante de la comisión.
 insert into public.usuarios_autorizados (email, nombre, rol) values
-  ('ernesto.lynch@buritec.com.ar', 'Ernesto Lynch', 'admin')
+  ('ernesto.lynch@buritec.com.ar', 'Ernesto Lynch', 'admin'),
+  ('escuelaclubnauticobariloche@gmail.com', 'Escuela Club Náutico Bariloche', 'comision')
 on conflict (email) do nothing;
 
 -- ---------------------------------------------------------------------------
