@@ -306,6 +306,31 @@ drop trigger if exists trg_folio_inscripcion on public.inscripciones;
 create trigger trg_folio_inscripcion before insert on public.inscripciones
   for each row execute function public.asignar_folio_inscripcion();
 
+-- El propio timonel puede editar su inscripción (ver RLS insc_update_propio) pero
+-- NUNCA los campos de gestión de la Comisión: si quien edita no es secretaria/comision/
+-- admin, estos campos quedan fijos en su valor anterior pase lo que pase en el UPDATE.
+create or replace function public.proteger_campos_gestion_inscripcion()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if not public.es_secretaria() then
+    new.evento_id      := old.evento_id;
+    new.clase_id       := old.clase_id;
+    new.folio          := old.folio;
+    new.timonel_email  := old.timonel_email;
+    new.estado         := old.estado;
+    new.pago_estado    := old.pago_estado;
+    new.monto          := old.monto;
+    new.motivo_rechazo := old.motivo_rechazo;
+    new.revisado_por   := old.revisado_por;
+    new.revisado_at    := old.revisado_at;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists trg_proteger_campos_gestion on public.inscripciones;
+create trigger trg_proteger_campos_gestion before update on public.inscripciones
+  for each row execute function public.proteger_campos_gestion_inscripcion();
+
 -- ---------------------------------------------------------------------------
 -- 8. PRUEBAS (cada "race" dentro del evento, por clase)
 -- ---------------------------------------------------------------------------
@@ -494,6 +519,20 @@ drop policy if exists insc_write_comision on public.inscripciones;
 create policy insc_write_comision on public.inscripciones for all to authenticated
   using (public.es_secretaria()) with check (public.es_secretaria());
 
+-- --- inscripciones: AUTOSERVICIO del timonel (solo su propio email) --------
+-- Cualquier persona autenticada (magic link, no requiere estar en usuarios_autorizados)
+-- puede ver únicamente las inscripciones donde figura como timonel, y editarlas sólo
+-- mientras estén 'pendiente'. El trigger trg_proteger_campos_gestion impide que toque
+-- estado, pago, folio, evento/clase o el email dueño aunque los incluya en el UPDATE.
+drop policy if exists insc_select_propio on public.inscripciones;
+create policy insc_select_propio on public.inscripciones for select to authenticated
+  using (lower(timonel_email) = lower(coalesce(auth.jwt() ->> 'email','')));
+
+drop policy if exists insc_update_propio on public.inscripciones;
+create policy insc_update_propio on public.inscripciones for update to authenticated
+  using (estado = 'pendiente' and lower(timonel_email) = lower(coalesce(auth.jwt() ->> 'email','')))
+  with check (lower(timonel_email) = lower(coalesce(auth.jwt() ->> 'email','')));
+
 -- --- pruebas y resultados: lectura pública ---------------------------------
 drop policy if exists pruebas_read on public.pruebas;
 create policy pruebas_read on public.pruebas for select to anon, authenticated using (true);
@@ -554,12 +593,40 @@ on conflict (id) do update set
   file_size_limit    = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
+-- Convención de rutas: '<inscripcion_id>/<tipo>.<ext>' para todo lo subido después del
+-- alta (autoservicio del timonel o reemplazo por la Comisión). El alta pública inicial
+-- (antes de que exista la fila) sube a una carpeta aleatoria — ver insc_docs_insert_anon.
+create or replace function public.es_dueno_inscripcion(p_path text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.inscripciones i
+    where i.id::text = split_part(p_path, '/', 1)
+      and lower(i.timonel_email) = lower(coalesce(auth.jwt() ->> 'email',''))
+  );
+$$;
+
+create or replace function public.es_dueno_inscripcion_editable(p_path text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.inscripciones i
+    where i.id::text = split_part(p_path, '/', 1)
+      and lower(i.timonel_email) = lower(coalesce(auth.jwt() ->> 'email',''))
+      and i.estado = 'pendiente'
+  );
+$$;
+
 -- El público (anon) puede SUBIR archivos al enviar el formulario de inscripción,
--- pero no puede leerlos ni listarlos. Sólo la Comisión (es_usuario_habilitado)
--- puede ver, reemplazar o borrar lo ya subido.
+-- pero no puede leerlos ni listarlos.
 drop policy if exists insc_docs_insert_publico on storage.objects;
-create policy insc_docs_insert_publico on storage.objects for insert to anon, authenticated
+drop policy if exists insc_docs_insert_anon on storage.objects;
+create policy insc_docs_insert_anon on storage.objects for insert to anon
   with check (bucket_id = 'inscripciones-docs');
+
+-- La Comisión (secretaria/comision/admin) puede ver, subir, reemplazar o borrar
+-- cualquier documento adjunto.
+drop policy if exists insc_docs_insert_comision on storage.objects;
+create policy insc_docs_insert_comision on storage.objects for insert to authenticated
+  with check (bucket_id = 'inscripciones-docs' and public.es_secretaria());
 
 drop policy if exists insc_docs_read_comision on storage.objects;
 create policy insc_docs_read_comision on storage.objects for select to authenticated
@@ -573,6 +640,21 @@ create policy insc_docs_update_comision on storage.objects for update to authent
 drop policy if exists insc_docs_delete_comision on storage.objects;
 create policy insc_docs_delete_comision on storage.objects for delete to authenticated
   using (bucket_id = 'inscripciones-docs' and public.es_secretaria());
+
+-- El propio timonel puede ver sus documentos siempre, y subir/reemplazar los suyos
+-- sólo mientras su inscripción esté 'pendiente'.
+drop policy if exists insc_docs_select_propio on storage.objects;
+create policy insc_docs_select_propio on storage.objects for select to authenticated
+  using (bucket_id = 'inscripciones-docs' and public.es_dueno_inscripcion(name));
+
+drop policy if exists insc_docs_insert_propio on storage.objects;
+create policy insc_docs_insert_propio on storage.objects for insert to authenticated
+  with check (bucket_id = 'inscripciones-docs' and public.es_dueno_inscripcion_editable(name));
+
+drop policy if exists insc_docs_update_propio on storage.objects;
+create policy insc_docs_update_propio on storage.objects for update to authenticated
+  using (bucket_id = 'inscripciones-docs' and public.es_dueno_inscripcion_editable(name))
+  with check (bucket_id = 'inscripciones-docs' and public.es_dueno_inscripcion_editable(name));
 
 -- ============================================================================
 -- FIN DEL ESQUEMA
