@@ -92,6 +92,15 @@ a { color: var(--azul-500); }
   padding: 48px 0 56px;
 }
 
+/* Formulario de inscripción: foto de Optimist frente al club */
+#heroInsc {
+  background-image: linear-gradient(160deg, rgba(7,42,63,.86) 0%, rgba(27,108,168,.72) 100%),
+                     url('assets/hero-inscripcion.jpg');
+  background-size: cover;
+  background-position: center 60%;
+  padding: 48px 0 56px;
+}
+
 /* ---------- Tarjetas ---------- */
 .card {
   background: var(--blanco); border: 1px solid var(--gris-300);
