@@ -622,6 +622,17 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
+-- Si alguien completa el formulario público de alta estando autenticado (por ejemplo,
+-- porque antes entró a "Mi inscripción" en el mismo navegador y quedó la sesión activa),
+-- la carpeta aleatoria del adjunto todavía no corresponde a ninguna inscripción real: hay
+-- que permitir esa subida igual que a un anónimo. Sólo se exige ser dueño+pendiente cuando
+-- la ruta SÍ coincide con una inscripción ya existente (autoservicio post-alta).
+create or replace function public.es_ruta_nueva_o_propia_editable(p_path text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select not exists (select 1 from public.inscripciones i where i.id::text = split_part(p_path, '/', 1))
+      or public.es_dueno_inscripcion_editable(p_path);
+$$;
+
 -- El público (anon) puede SUBIR archivos al enviar el formulario de inscripción,
 -- pero no puede leerlos ni listarlos.
 drop policy if exists insc_docs_insert_publico on storage.objects;
@@ -656,7 +667,7 @@ create policy insc_docs_select_propio on storage.objects for select to authentic
 
 drop policy if exists insc_docs_insert_propio on storage.objects;
 create policy insc_docs_insert_propio on storage.objects for insert to authenticated
-  with check (bucket_id = 'inscripciones-docs' and public.es_dueno_inscripcion_editable(name));
+  with check (bucket_id = 'inscripciones-docs' and public.es_ruta_nueva_o_propia_editable(name));
 
 drop policy if exists insc_docs_update_propio on storage.objects;
 create policy insc_docs_update_propio on storage.objects for update to authenticated
