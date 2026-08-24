@@ -37,15 +37,20 @@
 
     // ¿Está abierta la inscripción?
     const ahora = new Date();
-    const cerrada = ev.estado !== 'inscripcion_abierta' ||
-      (ev.inscripcion_cierre && ahora > new Date(ev.inscripcion_cierre)) ||
-      (ev.inscripcion_apertura && ahora < new Date(ev.inscripcion_apertura));
+    const noAbrio = !!ev.inscripcion_apertura && ahora < new Date(ev.inscripcion_apertura);
+    const yaCerro  = !!ev.inscripcion_cierre  && ahora > new Date(ev.inscripcion_cierre);
+    const cerrada = ev.estado !== 'inscripcion_abierta' || noAbrio || yaCerro;
 
     if (cerrada) {
-      U.aviso('#avisos', 'warn', '<strong>La inscripción a este evento no está abierta.</strong><br>' +
-        'Estado actual: ' + ((U.ESTADOS[ev.estado] || {}).txt || ev.estado) +
-        (ev.inscripcion_cierre ? '. Cierre de inscripción: ' + new Date(ev.inscripcion_cierre).toLocaleString('es-AR') : '') +
-        '<br><a href="index.html?evento=' + ev.id + '">Ver la ficha del evento</a>');
+      let motivo;
+      if (ev.estado !== 'inscripcion_abierta')
+        motivo = 'Estado actual del evento: ' + ((U.ESTADOS[ev.estado] || {}).txt || ev.estado) + '.';
+      else if (noAbrio)
+        motivo = 'La inscripción abre el ' + new Date(ev.inscripcion_apertura).toLocaleString('es-AR') + '.';
+      else if (yaCerro)
+        motivo = 'La inscripción cerró el ' + new Date(ev.inscripcion_cierre).toLocaleString('es-AR') + '.';
+      U.aviso('#avisos', 'warn', '<strong>La inscripción a este evento no está abierta todavía.</strong><br>' +
+        motivo + '<br><a href="index.html?evento=' + ev.id + '">Ver la ficha del evento</a>');
       return;
     }
 
