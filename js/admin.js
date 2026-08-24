@@ -229,6 +229,14 @@
   // =========================================================================
   // FORMULARIO DE EVENTO
   // =========================================================================
+  /** Formatea un timestamp para <input type="datetime-local"> en hora LOCAL del navegador (no UTC). */
+  function isoLocal(d) {
+    const dt = new Date(d);
+    const pad = n => String(n).padStart(2, '0');
+    return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) +
+      'T' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());
+  }
+
   function formEvento(ev) {
     ev = ev || {};
     const t = st.temporadas.find(x => x.activa) || st.temporadas[0] || {};
@@ -270,8 +278,8 @@
         <div class="field"><label>Comité de Protestas</label><input id="f_comite_protestas" value="${f('comite_protestas')}"></div>
       </div>
       <div class="grid g4">
-        <div class="field"><label>Apertura inscripción</label><input type="datetime-local" id="f_inscripcion_apertura" value="${ev.inscripcion_apertura ? new Date(ev.inscripcion_apertura).toISOString().slice(0,16) : ''}"></div>
-        <div class="field"><label>Cierre inscripción</label><input type="datetime-local" id="f_inscripcion_cierre" value="${ev.inscripcion_cierre ? new Date(ev.inscripcion_cierre).toISOString().slice(0,16) : ''}"></div>
+        <div class="field"><label>Apertura inscripción</label><input type="datetime-local" id="f_inscripcion_apertura" value="${ev.inscripcion_apertura ? isoLocal(ev.inscripcion_apertura) : ''}"></div>
+        <div class="field"><label>Cierre inscripción</label><input type="datetime-local" id="f_inscripcion_cierre" value="${ev.inscripcion_cierre ? isoLocal(ev.inscripcion_cierre) : ''}"></div>
         <div class="field"><label>Arancel socios ($)</label><input type="number" step="0.01" id="f_arancel_socio" value="${f('arancel_socio', 0)}"></div>
         <div class="field"><label>Arancel invitados ($)</label><input type="number" step="0.01" id="f_arancel_invitado" value="${f('arancel_invitado', 0)}"></div>
       </div>
