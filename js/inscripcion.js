@@ -25,6 +25,12 @@
   document.addEventListener('DOMContentLoaded', iniciar);
 
   async function iniciar() {
+    // El alta pública siempre debe subir como anónimo. Si el navegador tiene una sesión
+    // activa (por ejemplo, porque antes se usó "Mi inscripción" en el mismo dispositivo),
+    // la cerramos acá: evita que las políticas de "autenticado" bloqueen el alta nueva.
+    const { data: sesion } = await db.auth.getSession();
+    if (sesion && sesion.session) await db.auth.signOut();
+
     const id = U.param('evento');
     if (!id) { U.aviso('#avisos', 'error', 'Falta el identificador del evento en el enlace.'); return; }
 
