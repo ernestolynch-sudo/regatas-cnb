@@ -286,6 +286,13 @@ create table if not exists public.inscripciones (
   unique (evento_id, clase_id, num_vela)
 );
 
+-- 'create table if not exists' no modifica una tabla que ya existía antes de que se
+-- agregaran estas columnas — se agregan explícitamente para que la migración sea
+-- idempotente también sobre bases ya provisionadas con una versión anterior del esquema.
+alter table public.inscripciones add column if not exists seguro_archivo_path      text;
+alter table public.inscripciones add column if not exists tripulantes_archivo_path text;
+alter table public.inscripciones add column if not exists comprobante_pago_path    text;
+
 create index if not exists idx_insc_evento on public.inscripciones(evento_id);
 create index if not exists idx_insc_estado on public.inscripciones(estado);
 
