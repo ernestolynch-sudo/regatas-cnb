@@ -118,6 +118,7 @@
   }
 
   function mostrar(v) {
+    U.$('#heroEventos').style.display = v === 'eventos' ? '' : 'none';
     U.$('#vEventos').style.display = v === 'eventos' ? '' : 'none';
     U.$('#vEvento').style.display  = v === 'evento'  ? '' : 'none';
     U.$('#vConfig').style.display  = v === 'config'  ? '' : 'none';

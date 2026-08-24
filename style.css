@@ -101,6 +101,15 @@ a { color: var(--azul-500); }
   padding: 48px 0 56px;
 }
 
+/* Panel de comisión — lista de eventos: bote de comité entre ILCAs */
+#heroEventos {
+  background-image: linear-gradient(160deg, rgba(7,42,63,.86) 0%, rgba(15,76,117,.72) 100%),
+                     url('assets/hero-admin.jpg');
+  background-size: cover;
+  background-position: center 48%;
+  padding: 40px 0 48px;
+}
+
 /* ---------- Tarjetas ---------- */
 .card {
   background: var(--blanco); border: 1px solid var(--gris-300);
