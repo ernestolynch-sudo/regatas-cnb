@@ -16,8 +16,11 @@
     if (file.size > MAX_ARCHIVO) throw new Error('El archivo "' + file.name + '" pesa más de 10 MB.');
     const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
     const path = carpeta + '/' + nombreBase + '.' + ext;
+    // Sin upsert: la carpeta es un UUID nuevo en cada envío, así que nunca hay conflicto de
+    // ruta — y evitamos así exigirle al rol anónimo permiso de UPDATE además del de INSERT
+    // (Postgres exige ambos para un upsert, aunque la fila sea nueva).
     const { error } = await db.storage.from('inscripciones-docs')
-      .upload(path, file, { upsert: true, contentType: file.type || undefined });
+      .upload(path, file, { upsert: false, contentType: file.type || undefined });
     if (error) throw error;
     return path;
   }
