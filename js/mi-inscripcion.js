@@ -118,11 +118,13 @@
     return path;
   }
 
-  const DOCS_INSC = [
-    { campo: 'seguro_archivo_path', nombre: 'seguro', txt: 'Constancia de seguro' },
-    { campo: 'tripulantes_archivo_path', nombre: 'tripulantes', txt: 'Listado de tripulantes' },
-    { campo: 'comprobante_pago_path', nombre: 'comprobante', txt: 'Comprobante de pago' }
-  ];
+  function docBlock(i, campo, nombre, editable) {
+    return `<div class="doc-adjunto">
+      <span class="txt">${i[campo] ? '<span class="chip verde">Sí</span>' : '<span class="chip rojo">Falta</span>'}</span>
+      ${i[campo] ? `<button type="button" class="btn ghost sm" data-ver="${campo}">Ver</button>` : ''}
+      ${editable ? `<input type="file" accept="application/pdf,image/*" data-subir="${campo}" data-nombre="${nombre}" style="width:auto;flex:1;min-width:180px">` : ''}
+    </div>`;
+  }
 
   function abrirDetalle(id) {
     const i = misInsc.find(x => x.id === id);
@@ -172,7 +174,7 @@
             <div class="field"><label>Club</label>
               <input id="m_club" value="${U.esc(i.club || '')}" ${editable ? '' : 'disabled'}></div>
           </div>
-          ${cl.tipo === 'handicap' ? `<div class="grid g2">
+          ${cl.tipo === 'handicap' ? `<div class="grid g3">
             <div class="field"><label>Rating PHRF (s/MN)</label>
               <input type="number" step="0.1" id="m_rating" value="${i.rating ?? ''}" ${editable ? '' : 'disabled'}></div>
             <div class="field"><label>Origen del rating</label>
@@ -180,6 +182,8 @@
                 <option value="">— seleccionar —</option>
                 ${['CNB', 'FAY', 'ORC', 'provisorio'].map(o => `<option value="${o}" ${i.rating_origen === o ? 'selected' : ''}>${o === 'CNB' ? 'Asignado por el CNB' : o === 'FAY' ? 'Certificado FAY' : o === 'ORC' ? 'Certificado ORC' : 'Provisorio / a definir'}</option>`).join('')}
               </select></div>
+            <div class="field"><label>Matrícula REY</label>
+              <input id="m_matricula_rey" value="${U.esc(i.matricula_rey || '')}" ${editable ? '' : 'disabled'}></div>
           </div>` : ''}
           <div class="field"><label>Código de flota CNB</label>
             <input id="m_codigo_flota" value="${U.esc(i.codigo_flota || '')}" ${editable ? '' : 'disabled'}></div>
@@ -209,6 +213,12 @@
             <input type="checkbox" id="m_timonel_socio" ${i.timonel_socio ? 'checked' : ''} ${editable ? '' : 'disabled'}>
             <label for="m_timonel_socio">Soy socio del Club Náutico Bariloche</label>
           </div>
+          <div class="grid g2">
+            <div class="field"><label>Foto del carnet de timonel (opcional)</label>
+              ${docBlock(i, 'carnet_archivo_path', 'carnet', editable)}</div>
+            <div class="field"><label>Foto de la licencia FAY (opcional)</label>
+              ${docBlock(i, 'licencia_fay_archivo_path', 'licencia_fay', editable)}</div>
+          </div>
         </fieldset>
 
         <fieldset>
@@ -217,11 +227,7 @@
           ${editable ? '<button type="button" class="btn ghost sm" id="btnAddTrip">+ Agregar tripulante</button>' : ''}
           <div class="field" style="margin-top:13px">
             <label>Listado de tripulantes firmado (PDF, opcional)</label>
-            <div class="doc-adjunto">
-              <span class="txt">${i.tripulantes_archivo_path ? '<span class="chip verde">Sí</span>' : '<span class="chip rojo">Falta</span>'}</span>
-              ${i.tripulantes_archivo_path ? '<button type="button" class="btn ghost sm" data-ver="tripulantes_archivo_path">Ver</button>' : ''}
-              ${editable ? '<input type="file" accept="application/pdf,image/*" data-subir="tripulantes_archivo_path" data-nombre="tripulantes" style="width:auto;flex:1;min-width:180px">' : ''}
-            </div>
+            ${docBlock(i, 'tripulantes_archivo_path', 'tripulantes', editable)}
           </div>
         </fieldset>
 
@@ -242,24 +248,16 @@
               <input type="date" id="m_seguro_vencimiento" value="${U.esc(i.seguro_vencimiento || '')}" ${editable ? '' : 'disabled'}></div>
           </div>
           <div class="field">
-            <label>Constancia de seguro (PDF o foto)</label>
-            <div class="doc-adjunto">
-              <span class="txt">${i.seguro_archivo_path ? '<span class="chip verde">Sí</span>' : '<span class="chip rojo">Falta</span>'}</span>
-              ${i.seguro_archivo_path ? '<button type="button" class="btn ghost sm" data-ver="seguro_archivo_path">Ver</button>' : ''}
-              ${editable ? '<input type="file" accept="application/pdf,image/*" data-subir="seguro_archivo_path" data-nombre="seguro" style="width:auto;flex:1;min-width:180px">' : ''}
-            </div>
+            <label>Constancia de seguro (PDF o foto) <span class="req">*</span></label>
+            ${docBlock(i, 'seguro_archivo_path', 'seguro', editable)}
           </div>
         </fieldset>
 
         <fieldset>
           <legend>Comprobante de pago</legend>
           <div class="field">
-            <label>Comprobante de pago del arancel</label>
-            <div class="doc-adjunto">
-              <span class="txt">${i.comprobante_pago_path ? '<span class="chip verde">Sí</span>' : '<span class="chip rojo">Falta</span>'}</span>
-              ${i.comprobante_pago_path ? '<button type="button" class="btn ghost sm" data-ver="comprobante_pago_path">Ver</button>' : ''}
-              ${editable ? '<input type="file" accept="application/pdf,image/*" data-subir="comprobante_pago_path" data-nombre="comprobante" style="width:auto;flex:1;min-width:180px">' : ''}
-            </div>
+            <label>Comprobante de pago del arancel <span class="req">*</span></label>
+            ${docBlock(i, 'comprobante_pago_path', 'comprobante', editable)}
           </div>
         </fieldset>
 
@@ -318,6 +316,7 @@
         };
         if (U.$('#m_rating')) reg.rating = g('#m_rating') === '' ? null : Number(g('#m_rating'));
         if (U.$('#m_rating_origen')) reg.rating_origen = g('#m_rating_origen') || null;
+        if (U.$('#m_matricula_rey')) reg.matricula_rey = g('#m_matricula_rey').trim().toUpperCase() || null;
 
         const { error } = await db.from('inscripciones').update(reg).eq('id', i.id);
         btn.disabled = false; btn.textContent = 'Guardar cambios';

@@ -162,19 +162,25 @@
     const btn = U.$('#btnEnviar');
     const c = claseSel();
     if (!c) { U.aviso('#avisos', 'error', 'Seleccioná la clase en la que vas a participar.'); return; }
+    if (!U.$('#seguro_archivo').files[0]) { U.aviso('#avisos', 'error', 'Adjuntá la constancia de seguro: es obligatoria.'); return; }
+    if (!U.$('#comprobante_archivo').files[0]) { U.aviso('#avisos', 'error', 'Adjuntá el comprobante de pago: es obligatorio.'); return; }
 
     btn.disabled = true; btn.textContent = 'Enviando…';
 
     const socio = U.$('#timonel_socio').checked;
     const monto = socio ? E.evento.arancel_socio : E.evento.arancel_invitado;
 
-    let seguro_archivo_path = null, tripulantes_archivo_path = null, comprobante_pago_path = null;
+    let seguro_archivo_path = null, tripulantes_archivo_path = null, comprobante_pago_path = null,
+        carnet_archivo_path = null, licencia_fay_archivo_path = null;
     try {
       const carpeta = crypto.randomUUID();
-      [seguro_archivo_path, tripulantes_archivo_path, comprobante_pago_path] = await Promise.all([
+      [seguro_archivo_path, tripulantes_archivo_path, comprobante_pago_path,
+       carnet_archivo_path, licencia_fay_archivo_path] = await Promise.all([
         subirDoc(carpeta, 'seguro_archivo', 'seguro'),
         subirDoc(carpeta, 'trip_archivo', 'tripulantes'),
-        subirDoc(carpeta, 'comprobante_archivo', 'comprobante')
+        subirDoc(carpeta, 'comprobante_archivo', 'comprobante'),
+        subirDoc(carpeta, 'carnet_archivo', 'carnet'),
+        subirDoc(carpeta, 'licencia_fay_archivo', 'licencia_fay')
       ]);
     } catch (err) {
       btn.disabled = false; btn.textContent = 'Enviar inscripción';
@@ -192,6 +198,7 @@
       codigo_flota: U.$('#codigo_flota').value.trim().toUpperCase() || null,
       rating: U.$('#rating').value ? Number(U.$('#rating').value) : null,
       rating_origen: U.$('#rating_origen').value || null,
+      matricula_rey: U.$('#matricula_rey').value.trim().toUpperCase() || null,
 
       timonel_nombre: U.$('#timonel_nombre').value.trim(),
       timonel_dni: U.$('#timonel_dni').value.trim() || null,
@@ -200,6 +207,7 @@
       timonel_tel: U.$('#timonel_tel').value.trim(),
       timonel_licencia_fay: U.$('#timonel_licencia_fay').value.trim() || null,
       timonel_socio: socio,
+      carnet_archivo_path, licencia_fay_archivo_path,
 
       tripulantes: leerTripulantes(),
 

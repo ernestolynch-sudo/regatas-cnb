@@ -615,9 +615,11 @@
   }
 
   const DOCS_INSC = [
-    { campo: 'seguro_archivo_path',      nombre: 'seguro',      txt: 'Constancia de seguro' },
-    { campo: 'tripulantes_archivo_path', nombre: 'tripulantes', txt: 'Listado de tripulantes' },
-    { campo: 'comprobante_pago_path',    nombre: 'comprobante', txt: 'Comprobante de pago' }
+    { campo: 'seguro_archivo_path',       nombre: 'seguro',       txt: 'Constancia de seguro' },
+    { campo: 'comprobante_pago_path',     nombre: 'comprobante',  txt: 'Comprobante de pago' },
+    { campo: 'tripulantes_archivo_path',  nombre: 'tripulantes',  txt: 'Listado de tripulantes' },
+    { campo: 'carnet_archivo_path',       nombre: 'carnet',       txt: 'Carnet de timonel' },
+    { campo: 'licencia_fay_archivo_path', nombre: 'licencia_fay', txt: 'Licencia FAY' }
   ];
   const MAX_ARCHIVO = 10 * 1024 * 1024; // 10 MB, igual al límite del bucket 'inscripciones-docs'
 
@@ -653,6 +655,9 @@
         <div class="field"><label>Modelo</label><input id="i_modelo" value="${U.esc(i.modelo || '')}"></div>
         <div class="field"><label>Club</label><input id="i_club" value="${U.esc(i.club || '')}"></div>
         <div class="field"><label>Rating (s/MN)</label><input type="number" step="0.1" id="i_rating" value="${i.rating ?? ''}"></div>
+      </div>
+      <div class="grid g3">
+        <div class="field"><label>Matrícula REY</label><input id="i_matricula_rey" value="${U.esc(i.matricula_rey || '')}"></div>
       </div>
       <div class="grid g3">
         <div class="field"><label>Timonel</label><input id="i_timonel_nombre" value="${U.esc(i.timonel_nombre || '')}"></div>
@@ -701,6 +706,7 @@
         num_vela: g('num_vela').trim().toUpperCase(), nombre_barco: g('nombre_barco').trim(),
         modelo: g('modelo') || null, club: g('club') || null,
         rating: g('rating') === '' ? null : +g('rating'),
+        matricula_rey: g('matricula_rey').trim().toUpperCase() || null,
         timonel_nombre: g('timonel_nombre').trim(), timonel_email: g('timonel_email').trim(),
         timonel_tel: g('timonel_tel').trim(),
         estado: g('estado'), pago_estado: g('pago_estado'),
@@ -731,7 +737,7 @@
       { titulo: 'Clase', valor: i => (st.clases.find(c => c.id === i.clase_id) || {}).nombre || '' },
       { titulo: 'Nº vela', valor: 'num_vela' }, { titulo: 'Barco', valor: 'nombre_barco' },
       { titulo: 'Modelo', valor: 'modelo' }, { titulo: 'Club', valor: 'club' },
-      { titulo: 'Rating', valor: 'rating' },
+      { titulo: 'Rating', valor: 'rating' }, { titulo: 'Matrícula REY', valor: 'matricula_rey' },
       { titulo: 'Timonel', valor: 'timonel_nombre' }, { titulo: 'DNI', valor: 'timonel_dni' },
       { titulo: 'Nacimiento', valor: 'timonel_nacimiento' },
       { titulo: 'Email', valor: 'timonel_email' }, { titulo: 'Teléfono', valor: 'timonel_tel' },
@@ -742,8 +748,10 @@
       { titulo: 'Seguro', valor: i => (i.seguro_compania || '') + ' ' + (i.seguro_poliza || '') },
       { titulo: 'Vto. seguro', valor: 'seguro_vencimiento' },
       { titulo: 'Doc. seguro', valor: i => i.seguro_archivo_path ? 'SI' : 'NO' },
-      { titulo: 'Doc. tripulantes', valor: i => i.tripulantes_archivo_path ? 'SI' : 'NO' },
       { titulo: 'Doc. comprobante pago', valor: i => i.comprobante_pago_path ? 'SI' : 'NO' },
+      { titulo: 'Doc. tripulantes', valor: i => i.tripulantes_archivo_path ? 'SI' : 'NO' },
+      { titulo: 'Doc. carnet', valor: i => i.carnet_archivo_path ? 'SI' : 'NO' },
+      { titulo: 'Doc. licencia FAY', valor: i => i.licencia_fay_archivo_path ? 'SI' : 'NO' },
       { titulo: 'Estado', valor: 'estado' }, { titulo: 'Pago', valor: 'pago_estado' },
       { titulo: 'Monto', valor: 'monto' }, { titulo: 'Observaciones', valor: 'observaciones' }
     ];

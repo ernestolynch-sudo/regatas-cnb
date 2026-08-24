@@ -240,6 +240,7 @@ create table if not exists public.inscripciones (
   codigo_flota  text,                              -- código del registro de flota CNB (ej: OPT-C-001)
   rating        numeric(10,3),                     -- PHRF s/milla (handicap) — null en monotipo
   rating_origen text,                              -- 'CNB', 'FAY', 'ORC', 'provisorio'
+  matricula_rey text,                              -- matrícula naval (REY), si la tiene — sólo PHRF/handicap
 
   -- Timonel / responsable
   timonel_nombre     text not null,
@@ -261,9 +262,11 @@ create table if not exists public.inscripciones (
   seguro_vencimiento date,
 
   -- Documentos adjuntos (Supabase Storage, bucket 'inscripciones-docs')
-  seguro_archivo_path      text,   -- constancia de seguro (PDF/foto)
-  tripulantes_archivo_path text,   -- listado de tripulantes firmado (PDF)
-  comprobante_pago_path    text,   -- comprobante de pago del arancel (PDF/foto)
+  seguro_archivo_path       text,   -- constancia de seguro (PDF/foto) — obligatorio
+  tripulantes_archivo_path  text,   -- listado de tripulantes firmado (PDF) — opcional
+  comprobante_pago_path     text,   -- comprobante de pago del arancel (PDF/foto) — obligatorio
+  carnet_archivo_path       text,   -- foto del carnet de timonel — opcional
+  licencia_fay_archivo_path text,   -- foto de la licencia deportiva FAY — opcional
 
   acepta_rrv         boolean not null default false,
   acepta_riesgo      boolean not null default false,   -- Regla 3 RRV — Decisión de regatear
@@ -289,9 +292,12 @@ create table if not exists public.inscripciones (
 -- 'create table if not exists' no modifica una tabla que ya existía antes de que se
 -- agregaran estas columnas — se agregan explícitamente para que la migración sea
 -- idempotente también sobre bases ya provisionadas con una versión anterior del esquema.
-alter table public.inscripciones add column if not exists seguro_archivo_path      text;
-alter table public.inscripciones add column if not exists tripulantes_archivo_path text;
-alter table public.inscripciones add column if not exists comprobante_pago_path    text;
+alter table public.inscripciones add column if not exists seguro_archivo_path       text;
+alter table public.inscripciones add column if not exists tripulantes_archivo_path  text;
+alter table public.inscripciones add column if not exists comprobante_pago_path     text;
+alter table public.inscripciones add column if not exists carnet_archivo_path       text;
+alter table public.inscripciones add column if not exists licencia_fay_archivo_path text;
+alter table public.inscripciones add column if not exists matricula_rey             text;
 
 create index if not exists idx_insc_evento on public.inscripciones(evento_id);
 create index if not exists idx_insc_estado on public.inscripciones(estado);
