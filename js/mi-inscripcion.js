@@ -251,7 +251,7 @@
               <input type="date" id="m_seguro_vencimiento" value="${U.esc(i.seguro_vencimiento || '')}" ${editable ? '' : 'disabled'}></div>
           </div>
           <div class="field">
-            <label>Constancia de seguro (PDF o foto) <span class="req">*</span></label>
+            <label>Constancia de seguro (PDF o foto)</label>
             ${docBlock(i, 'seguro_archivo_path', 'seguro', editable)}
           </div>
         </fieldset>

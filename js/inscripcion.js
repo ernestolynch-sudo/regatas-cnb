@@ -171,7 +171,6 @@
     const btn = U.$('#btnEnviar');
     const c = claseSel();
     if (!c) { U.aviso('#avisos', 'error', 'Seleccioná la clase en la que vas a participar.'); return; }
-    if (!U.$('#seguro_archivo').files[0]) { U.aviso('#avisos', 'error', 'Adjuntá la constancia de seguro: es obligatoria.'); return; }
     if (!U.$('#comprobante_archivo').files[0]) { U.aviso('#avisos', 'error', 'Adjuntá el comprobante de pago: es obligatorio.'); return; }
 
     btn.disabled = true; btn.textContent = 'Enviando…';
