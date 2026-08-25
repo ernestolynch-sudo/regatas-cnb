@@ -88,7 +88,7 @@
     const email = U.$('#email').value.trim().toLowerCase();
     const pin = U.$('#pin').value.trim();
     if (!email || !pin) return;
-    if (!/^\d{4}$/.test(pin)) { U.aviso('#loginAviso', 'error', 'El PIN debe tener 4 dígitos.'); return; }
+    if (!/^\d{6}$/.test(pin)) { U.aviso('#loginAviso', 'error', 'El PIN debe tener 6 dígitos.'); return; }
     U.aviso('#loginAviso', 'info', 'Verificando…');
     const { error } = await db.auth.signInWithPassword({ email, password: pin });
     if (error) U.aviso('#loginAviso', 'error', U.esc(U.err(error)));
@@ -108,7 +108,7 @@
 
   async function guardarNuevoPin() {
     const pin = U.$('#nuevoPin').value.trim();
-    if (!/^\d{4}$/.test(pin)) { U.aviso('#nuevoPinAviso', 'error', 'El PIN debe tener 4 dígitos.'); return; }
+    if (!/^\d{6}$/.test(pin)) { U.aviso('#nuevoPinAviso', 'error', 'El PIN debe tener 6 dígitos.'); return; }
     U.aviso('#nuevoPinAviso', 'info', 'Guardando…');
     const { error } = await db.auth.updateUser({ password: pin });
     if (error) { U.aviso('#nuevoPinAviso', 'error', U.esc(U.err(error))); return; }
