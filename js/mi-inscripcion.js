@@ -8,6 +8,8 @@
 (function () {
   'use strict';
   const MAX_ARCHIVO = 10 * 1024 * 1024; // 10 MB, igual al límite del bucket 'inscripciones-docs'
+  const RATING_ORIGENES = { CIC: 'Listado del CIC', CNB: 'Asignado por el CNB',
+    FAY: 'Certificado FAY', ORC: 'Certificado ORC', provisorio: 'Provisorio / a definir' };
   let misInsc = [];
 
   document.addEventListener('DOMContentLoaded', async () => {
@@ -176,11 +178,12 @@
           </div>
           ${cl.tipo === 'handicap' ? `<div class="grid g3">
             <div class="field"><label>Rating PHRF (s/MN)</label>
-              <input type="number" step="0.1" id="m_rating" value="${i.rating ?? ''}" ${editable ? '' : 'disabled'}></div>
+              <input type="number" step="0.1" id="m_rating" value="${i.rating ?? ''}" ${editable ? '' : 'disabled'}>
+              <div class="hint">Se toma el rating publicado en el listado del CIC.</div></div>
             <div class="field"><label>Origen del rating</label>
               <select id="m_rating_origen" ${editable ? '' : 'disabled'}>
                 <option value="">— seleccionar —</option>
-                ${['CNB', 'FAY', 'ORC', 'provisorio'].map(o => `<option value="${o}" ${i.rating_origen === o ? 'selected' : ''}>${o === 'CNB' ? 'Asignado por el CNB' : o === 'FAY' ? 'Certificado FAY' : o === 'ORC' ? 'Certificado ORC' : 'Provisorio / a definir'}</option>`).join('')}
+                ${Object.entries(RATING_ORIGENES).map(([o, txt]) => `<option value="${o}" ${i.rating_origen === o ? 'selected' : ''}>${txt}</option>`).join('')}
               </select></div>
             <div class="field"><label>Matrícula REY</label>
               <input id="m_matricula_rey" value="${U.esc(i.matricula_rey || '')}" ${editable ? '' : 'disabled'}></div>

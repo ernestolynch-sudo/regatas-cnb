@@ -710,7 +710,8 @@
       <div class="grid g3">
         <div class="field"><label>Modelo</label><input id="i_modelo" value="${U.esc(i.modelo || '')}"></div>
         <div class="field"><label>Club</label><input id="i_club" value="${U.esc(i.club || '')}"></div>
-        <div class="field"><label>Rating (s/MN)</label><input type="number" step="0.1" id="i_rating" value="${i.rating ?? ''}"></div>
+        <div class="field"><label>Rating (s/MN)</label><input type="number" step="0.1" id="i_rating" value="${i.rating ?? ''}">
+          <div class="hint">Se toma el rating publicado en el listado del CIC.</div></div>
       </div>
       <div class="grid g3">
         <div class="field"><label>Matrícula REY</label><input id="i_matricula_rey" value="${U.esc(i.matricula_rey || '')}"></div>
