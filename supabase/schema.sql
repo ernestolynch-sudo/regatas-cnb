@@ -344,6 +344,69 @@ drop trigger if exists trg_proteger_campos_gestion on public.inscripciones;
 create trigger trg_proteger_campos_gestion before update on public.inscripciones
   for each row execute function public.proteger_campos_gestion_inscripcion();
 
+-- Alta pública vía RPC: hace el INSERT como security definer (bypasea RLS, corre con
+-- los privilegios del dueño de la función) y devuelve sólo folio/num_vela. Necesario
+-- porque Postgres exige permiso de SELECT para el RETURNING de un INSERT normal, y no
+-- queremos abrirle lectura de toda la tabla (con emails, DNI, etc.) al público. Repite
+-- a mano las mismas condiciones que insc_insert_publico, porque al bypasear RLS ya no
+-- se validan solas.
+create or replace function public.crear_inscripcion_publica(p jsonb)
+returns table(folio text, num_vela text)
+language plpgsql security definer set search_path = public as $$
+declare
+  v_evento_id uuid := (p->>'evento_id')::uuid;
+  v_abierto boolean;
+  v_row public.inscripciones;
+begin
+  select exists (
+    select 1 from public.eventos e
+    where e.id = v_evento_id
+      and e.estado = 'inscripcion_abierta'
+      and (e.inscripcion_apertura is null or now() >= e.inscripcion_apertura)
+      and (e.inscripcion_cierre  is null or now() <= e.inscripcion_cierre)
+  ) into v_abierto;
+
+  if not v_abierto then
+    raise exception 'La inscripción a este evento no está abierta.';
+  end if;
+  if coalesce((p->>'acepta_rrv')::boolean, false) is not true
+     or coalesce((p->>'acepta_riesgo')::boolean, false) is not true then
+    raise exception 'Debés aceptar el Reglamento y la declaración de riesgo.';
+  end if;
+
+  insert into public.inscripciones (
+    evento_id, clase_id, nombre_barco, num_vela, modelo, club, codigo_flota,
+    rating, rating_origen, matricula_rey,
+    timonel_nombre, timonel_dni, timonel_nacimiento, timonel_email, timonel_tel,
+    timonel_licencia_fay, timonel_socio, tripulantes,
+    emergencia_nombre, emergencia_tel, seguro_compania, seguro_poliza, seguro_vencimiento,
+    seguro_archivo_path, tripulantes_archivo_path, comprobante_pago_path,
+    carnet_archivo_path, licencia_fay_archivo_path,
+    acepta_rrv, acepta_riesgo, autoriza_menor, observaciones,
+    estado, pago_estado, monto
+  ) values (
+    v_evento_id, (p->>'clase_id')::uuid, p->>'nombre_barco', p->>'num_vela',
+    p->>'modelo', p->>'club', p->>'codigo_flota',
+    nullif(p->>'rating','')::numeric, p->>'rating_origen', p->>'matricula_rey',
+    p->>'timonel_nombre', p->>'timonel_dni', nullif(p->>'timonel_nacimiento','')::date,
+    p->>'timonel_email', p->>'timonel_tel',
+    p->>'timonel_licencia_fay', coalesce((p->>'timonel_socio')::boolean, true),
+    coalesce(p->'tripulantes', '[]'::jsonb),
+    p->>'emergencia_nombre', p->>'emergencia_tel',
+    p->>'seguro_compania', p->>'seguro_poliza', nullif(p->>'seguro_vencimiento','')::date,
+    p->>'seguro_archivo_path', p->>'tripulantes_archivo_path', p->>'comprobante_pago_path',
+    p->>'carnet_archivo_path', p->>'licencia_fay_archivo_path',
+    true, true, coalesce((p->>'autoriza_menor')::boolean, false), p->>'observaciones',
+    'pendiente', 'impago', nullif(p->>'monto','')::numeric
+  )
+  returning * into v_row;
+
+  return query select v_row.folio, v_row.num_vela;
+end;
+$$;
+
+grant execute on function public.crear_inscripcion_publica(jsonb) to anon;
+
 -- ---------------------------------------------------------------------------
 -- 8. PRUEBAS (cada "race" dentro del evento, por clase)
 -- ---------------------------------------------------------------------------

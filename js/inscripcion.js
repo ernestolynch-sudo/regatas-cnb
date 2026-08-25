@@ -237,7 +237,7 @@
       monto: monto || null
     };
 
-    const { data, error } = await db.from('inscripciones').insert(reg).select('folio, num_vela').single();
+    const { data, error } = await db.rpc('crear_inscripcion_publica', { p: reg }).single();
 
     btn.disabled = false; btn.textContent = 'Enviar inscripción';
 
