@@ -48,31 +48,82 @@
   // AUTENTICACIÓN
   // =========================================================================
   document.addEventListener('DOMContentLoaded', async () => {
-    U.$('#btnLogin').addEventListener('click', login);
-    U.$('#email').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+    U.$('#btnLoginPin').addEventListener('click', loginPin);
+    U.$('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') loginPin(); });
+    U.$('#email').addEventListener('keydown', e => { if (e.key === 'Enter') loginPin(); });
+
+    U.$('#linkConfigurarPin').addEventListener('click', e => {
+      e.preventDefault();
+      U.$('#emailPin').value = U.$('#email').value;
+      U.$('#cardLoginPin').style.display = 'none';
+      U.$('#cardConfigurarPin').style.display = '';
+    });
+    U.$('#linkVolverLoginPin').addEventListener('click', e => {
+      e.preventDefault();
+      U.$('#cardConfigurarPin').style.display = 'none';
+      U.$('#cardLoginPin').style.display = '';
+    });
+    U.$('#btnEnviarRecuperoPin').addEventListener('click', enviarRecuperoPin);
+    U.$('#emailPin').addEventListener('keydown', e => { if (e.key === 'Enter') enviarRecuperoPin(); });
+    U.$('#btnGuardarNuevoPin').addEventListener('click', guardarNuevoPin);
+    U.$('#nuevoPin').addEventListener('keydown', e => { if (e.key === 'Enter') guardarNuevoPin(); });
+
     U.$('#btnSalir').addEventListener('click', async () => { await db.auth.signOut(); location.reload(); });
 
-    db.auth.onAuthStateChange((_e, s) => { if (s && !st.usuario) verificar(s); });
+    db.auth.onAuthStateChange((evt, s) => {
+      if (evt === 'PASSWORD_RECOVERY') { mostrarNuevoPin(); return; }
+      if (s && !st.usuario) verificar(s);
+    });
     const { data } = await db.auth.getSession();
     if (data && data.session) verificar(data.session);
   });
 
-  async function login() {
+  function mostrarNuevoPin() {
+    U.$('#cardLoginPin').style.display = 'none';
+    U.$('#cardConfigurarPin').style.display = 'none';
+    U.$('#cardNuevoPin').style.display = '';
+  }
+
+  async function loginPin() {
     const email = U.$('#email').value.trim().toLowerCase();
+    const pin = U.$('#pin').value.trim();
+    if (!email || !pin) return;
+    if (!/^\d{4}$/.test(pin)) { U.aviso('#loginAviso', 'error', 'El PIN debe tener 4 dígitos.'); return; }
+    U.aviso('#loginAviso', 'info', 'Verificando…');
+    const { error } = await db.auth.signInWithPassword({ email, password: pin });
+    if (error) U.aviso('#loginAviso', 'error', U.esc(U.err(error)));
+  }
+
+  async function enviarRecuperoPin() {
+    const email = U.$('#emailPin').value.trim().toLowerCase();
     if (!email) return;
-    U.aviso('#loginAviso', 'info', 'Enviando enlace…');
-    const { error } = await db.auth.signInWithOtp({
-      email, options: { emailRedirectTo: location.origin + location.pathname }
+    U.aviso('#pinAviso', 'info', 'Enviando enlace…');
+    const { error } = await db.auth.resetPasswordForEmail(email, {
+      redirectTo: location.origin + location.pathname
     });
-    U.aviso('#loginAviso', error ? 'error' : 'ok',
+    U.aviso('#pinAviso', error ? 'error' : 'ok',
       error ? U.esc(U.err(error))
-            : 'Enlace enviado a <strong>' + U.esc(email) + '</strong>. Revisá tu correo (y la carpeta de spam).');
+            : 'Enlace enviado a <strong>' + U.esc(email) + '</strong>. Revisá tu correo (y la carpeta de spam) y abrilo en este mismo navegador.');
+  }
+
+  async function guardarNuevoPin() {
+    const pin = U.$('#nuevoPin').value.trim();
+    if (!/^\d{4}$/.test(pin)) { U.aviso('#nuevoPinAviso', 'error', 'El PIN debe tener 4 dígitos.'); return; }
+    U.aviso('#nuevoPinAviso', 'info', 'Guardando…');
+    const { error } = await db.auth.updateUser({ password: pin });
+    if (error) { U.aviso('#nuevoPinAviso', 'error', U.esc(U.err(error))); return; }
+    U.aviso('#nuevoPinAviso', 'ok', 'PIN guardado. Entrando…');
+    const { data } = await db.auth.getSession();
+    if (data && data.session) verificar(data.session);
   }
 
   async function verificar(session) {
     const email = session.user.email;
     const { data, error } = await db.from('usuarios_autorizados').select('*').ilike('email', email).maybeSingle();
     if (error || !data || !data.activo) {
+      U.$('#cardNuevoPin').style.display = 'none';
+      U.$('#cardConfigurarPin').style.display = 'none';
+      U.$('#cardLoginPin').style.display = '';
       U.aviso('#loginAviso', 'error',
         'El correo <strong>' + U.esc(email) + '</strong> no está habilitado en el sistema. ' +
         'Pedile a un administrador que lo agregue en <code>usuarios_autorizados</code>.');

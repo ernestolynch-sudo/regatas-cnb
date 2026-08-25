@@ -160,6 +160,9 @@
       const m = e.message || String(e);
       if (/row-level security/i.test(m))
         return 'No tenés permisos para esta operación (RLS). Verificá que tu email esté activo en usuarios_autorizados.';
+      if (/invalid login credentials/i.test(m)) return 'Correo o PIN incorrecto.';
+      if (/password should be at least/i.test(m))
+        return 'El PIN es muy corto para la configuración actual de Supabase. Bajá el "Minimum password length" a 4 en Authentication → Providers → Email.';
       if (/duplicate key/i.test(m) && /num_vela/i.test(m))
         return 'Ya existe una inscripción con ese número de vela en esta clase para este evento.';
       if (/duplicate key/i.test(m)) return 'Ya existe un registro con esos datos (clave duplicada).';

@@ -23,16 +23,47 @@
 
 <!-- ================= LOGIN ================= -->
 <div id="login" class="wrap-sm" style="margin-top:52px">
-  <div class="card">
+  <div class="card" id="cardLoginPin">
     <h2 class="mt0">Acceso de la Comisión de Vela y Motor</h2>
-    <p class="muted small">Ingresá tu correo. Vas a recibir un enlace de acceso (<em>magic link</em>).
-      Sólo funcionan los correos habilitados en el sistema.</p>
+    <p class="muted small">Ingresá tu correo y tu PIN de 4 dígitos. Sólo funcionan los correos
+      habilitados en el sistema.</p>
     <div id="loginAviso"></div>
     <div class="field">
       <label for="email">Correo electrónico</label>
       <input type="email" id="email" placeholder="nombre@dominio.com">
     </div>
-    <button class="btn block" id="btnLogin">Enviar enlace de acceso</button>
+    <div class="field">
+      <label for="pin">PIN (4 dígitos)</label>
+      <input type="password" id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••">
+    </div>
+    <button class="btn block" id="btnLoginPin">Ingresar</button>
+    <p class="small muted" style="margin:12px 0 0">
+      <a href="#" id="linkConfigurarPin">¿Todavía no tenés PIN o lo olvidaste?</a>
+    </p>
+  </div>
+
+  <div class="card" id="cardConfigurarPin" style="display:none">
+    <h2 class="mt0">Configurar / recuperar PIN</h2>
+    <p class="muted small">Te enviamos un enlace a tu correo para elegir un PIN nuevo.
+      Sólo hace falta hacer esto una vez (o cuando te lo olvides).</p>
+    <div id="pinAviso"></div>
+    <div class="field">
+      <label for="emailPin">Correo electrónico</label>
+      <input type="email" id="emailPin" placeholder="nombre@dominio.com">
+    </div>
+    <button class="btn block" id="btnEnviarRecuperoPin">Enviar enlace</button>
+    <p class="small muted" style="margin:12px 0 0"><a href="#" id="linkVolverLoginPin">&larr; Volver</a></p>
+  </div>
+
+  <div class="card" id="cardNuevoPin" style="display:none">
+    <h2 class="mt0">Elegí tu PIN</h2>
+    <p class="muted small">Este PIN de 4 dígitos vas a usarlo junto con tu correo para entrar al panel.</p>
+    <div id="nuevoPinAviso"></div>
+    <div class="field">
+      <label for="nuevoPin">PIN nuevo (4 dígitos)</label>
+      <input type="password" id="nuevoPin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••">
+    </div>
+    <button class="btn block" id="btnGuardarNuevoPin">Guardar PIN</button>
   </div>
 </div>
 

@@ -168,7 +168,7 @@ h3 { font-size: 16px; }
 label { display: block; font-size: 13px; font-weight: 600; color: var(--gris-700); margin-bottom: 4px; }
 label .req { color: var(--rojo); }
 input[type=text], input[type=email], input[type=tel], input[type=number], input[type=date],
-input[type=time], input[type=datetime-local], select, textarea {
+input[type=time], input[type=datetime-local], input[type=password], select, textarea {
   width: 100%; padding: 9px 11px; border: 1px solid var(--gris-300); border-radius: 8px;
   font-family: inherit; font-size: 14px; background: #fff; color: var(--gris-900);
 }
