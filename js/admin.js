@@ -72,21 +72,14 @@
 
     // El link de "configurar/recuperar PIN" deja una sesión técnica activa para poder
     // guardar el PIN nuevo (Supabase la necesita para eso), pero NO debe dejar entrar al
-    // panel directo: hay que mostrar primero la pantalla para elegir el PIN. El evento
-    // PASSWORD_RECOVERY cubre eso, pero además chequeamos la URL por si el navegador ya
-    // había resuelto la sesión antes de que el listener quedara armado.
-    const esRecupero = /type=recovery/.test(location.hash) || /type=recovery/.test(location.search);
-
+    // panel directo: hay que mostrar primero la pantalla para elegir el PIN. onAuthStateChange
+    // dispara solo, al suscribirse, un evento con el estado inicial real (PASSWORD_RECOVERY
+    // si venís de ese link, SIGNED_IN/INITIAL_SESSION si ya tenías sesión) — por eso alcanza
+    // con este único listener, sin adivinar nada mirando la URL a mano.
     db.auth.onAuthStateChange((evt, s) => {
       if (evt === 'PASSWORD_RECOVERY') { mostrarNuevoPin(); return; }
-      if (s && !st.usuario && !esRecupero) verificar(s);
+      if (s && !st.usuario) verificar(s);
     });
-    if (!esRecupero) {
-      const { data } = await db.auth.getSession();
-      if (data && data.session) verificar(data.session);
-    } else {
-      mostrarNuevoPin();
-    }
   });
 
   function mostrarNuevoPin() {
