@@ -1196,7 +1196,7 @@
   // ----------------------------------------------------------------- DIFUSIÓN
   function tabDifusion() {
     const p = U.$('#panelEv');
-    const base = location.origin + location.pathname.replace(/admin\.html$/, '');
+    const base = location.origin + '/';
     const linkInsc = base + 'inscripcion.html?evento=' + st.ev.id;
     const linkEv   = base + 'index.html?evento=' + st.ev.id;
 
