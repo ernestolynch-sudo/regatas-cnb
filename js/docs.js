@@ -90,10 +90,11 @@
       <p>3.4. Plazo de inscripción: ${opc.plazoInscripcion || 'hasta ' + (ev.inscripcion_cierre
         ? fechaLarga(ev.inscripcion_cierre) : 'la fecha que informe la Autoridad Organizadora')}.
       Las inscripciones fuera de término quedarán sujetas a aceptación de la Autoridad Organizadora.</p>
-      <p>3.5. Cada barco deberá presentar, antes de la primera señal de atención:
-      constancia de seguro de responsabilidad civil vigente (ver punto 16), documento de identidad
-      del timonel y, en caso de competidores menores de edad, autorización firmada por su
-      responsable legal.</p>
+      <p>3.5. Cada barco deberá presentar, antes de la primera señal de atención: documento de
+      identidad del timonel y, en caso de competidores menores de edad, autorización firmada por su
+      responsable legal. La constancia de seguro de responsabilidad civil es opcional para competir
+      y sólo obligatoria para los barcos que soliciten amarra de cortesía o ingreso al fondeadero del
+      Club (ver punto 16).</p>
       ${hayHandicap ? `<p>3.6. Los barcos que corran con handicap deberán declarar su rating en el
       formulario de inscripción. Los ratings serán asignados o revisados por la Comisión de Vela y
       Motor. Un rating provisorio asignado por la Comisión no será motivo de solicitud de reparación.</p>` : ''}`);
@@ -119,7 +120,10 @@
       <p>5.5. La serie se constituirá con un mínimo de
       ${Math.min(...cls.map(c => c.pruebas_minimas || 1).concat([1]))} prueba(s) válida(s).</p>
       <p>5.6. El último día del evento no se dará ninguna señal de atención después de
-      ${opc.horaLimiteUltimoDia || '16:30 h'}, salvo como consecuencia de una llamada general.</p>`);
+      ${opc.horaLimiteUltimoDia || '16:30 h'}, salvo como consecuencia de una llamada general.</p>
+      <p>5.7. Si el puerto se encuentra cerrado por disposición de la Prefectura Naval Argentina a
+      causa de las condiciones climáticas, no se dará la señal de atención hasta que el puerto sea
+      reabierto.</p>`);
 
     add('Instrucciones de Regata', `
       <p>6.1. Las Instrucciones de Regata estarán disponibles en el sitio web del evento y en el
@@ -171,7 +175,9 @@
       <p>12.1. Los barcos visitantes dispondrán de sector de armado y guardería asignado por la
       Comisión de Vela y Motor conforme al Plan de Sectores vigente del Club.</p>
       <p>12.2. Los barcos no podrán ser sacados del agua durante el evento sin autorización previa y
-      por escrito del Comité de Regata, salvo por razones de seguridad.</p>`);
+      por escrito del Comité de Regata, salvo por razones de seguridad.</p>
+      <p>12.3. El uso de amarra de cortesía o el ingreso al fondeadero del Club está condicionado a la
+      presentación de la constancia de seguro exigida en el punto 16.2.</p>`);
 
     add('Radiocomunicación', `
       <p>13.1. Canal de trabajo: VHF ${esc(ev.canal_vhf || '71')}.</p>
@@ -194,16 +200,27 @@
       de su barco; y que la Autoridad Organizadora, el Comité de Regata, el Comité de Protestas, los
       auspiciantes y sus dependientes no aceptan responsabilidad alguna por daño material, lesión
       personal o muerte vinculada, antes, durante o después del evento.</p>
-      <p>15.3. Es obligatorio el uso permanente de chaleco salvavidas o ayuda a la flotabilidad
-      homologada mientras el barco se encuentre en el agua, desde el zarpado hasta el regreso.
-      Esto modifica la regla 40 del RRV.</p>`);
+      <p>15.3. El uso de chaleco salvavidas o ayuda a la flotabilidad homologada es obligatorio,
+      mientras el barco se encuentre en el agua, en las siguientes situaciones:</p>
+      <ul>
+        <li>cuando el Comité de Regata iza la bandera «Y» (Yankee);</li>
+        <li>desde la puesta del sol hasta el amanecer, debiendo además portarse una luz centellante
+        homologada durante ese período;</li>
+        <li>en la modalidad «dobles», en todo momento;</li>
+        <li>para todo competidor menor de edad, en todo momento.</li>
+      </ul>
+      <p>Esto modifica la regla 40 del RRV.</p>`);
 
     add('Seguro', `
-      <p>16.1. Cada barco participante deberá contar con un seguro de responsabilidad civil frente a
-      terceros vigente durante todo el evento, con una cobertura mínima de
-      ${esc(opc.montoSeguro || 'la exigida por la Prefectura Naval Argentina y por la FAY para el tipo de embarcación')}.</p>
-      <p>16.2. La constancia de cobertura deberá adjuntarse o exhibirse al confirmar la inscripción.
-      El barco que no acredite cobertura no será autorizado a largar.</p>`);
+      <p>16.1. La presentación de constancia de seguro de responsabilidad civil frente a terceros es
+      <strong>opcional</strong> para competir en esta regata.</p>
+      <p>16.2. Todo barco que solicite amarra de cortesía o ingreso al fondeadero del Club Náutico
+      Bariloche —sea socio o visitante— deberá contar con un seguro de responsabilidad civil frente a
+      terceros vigente, con una cobertura mínima de
+      ${esc(opc.montoSeguro || 'la exigida por la Prefectura Naval Argentina y por la FAY para el tipo de embarcación')},
+      y presentar la constancia correspondiente para poder hacer uso de esas instalaciones.</p>
+      <p>16.3. Se recomienda a todos los competidores mantener vigente una cobertura de seguro
+      durante el evento, aunque no sea exigida para competir.</p>`);
 
     add('Protección de datos y derechos de imagen', `
       <p>17.1. Los datos personales suministrados en la inscripción serán utilizados exclusivamente
@@ -379,9 +396,11 @@
       <p>16.4. Los empates se resolverán conforme a la regla A8 del RRV.</p>`);
 
     add('Reglas de seguridad', `
-      <p>17.1. <strong>Chaleco salvavidas.</strong> Es obligatorio el uso permanente de chaleco
-      salvavidas o ayuda a la flotabilidad homologada desde el zarpado hasta el regreso a tierra.
-      Esto modifica la regla 40 del RRV. La bandera «Y» no será desplegada.</p>
+      <p>17.1. <strong>Chaleco salvavidas.</strong> Su uso es obligatorio, mientras el barco esté en
+      el agua, cuando el Comité de Regata iza la bandera «Y»; desde la puesta del sol hasta el
+      amanecer (con luz centellante homologada); en la modalidad «dobles», en todo momento; y para
+      todo competidor menor de edad, en todo momento. Esto modifica la regla 40 del RRV — ver punto
+      15.3 del Aviso de Regata.</p>
       <p>17.2. <strong>Control de salida y regreso.</strong> Todo barco que abandone la costa deberá
       registrarse en la planilla de salida, y deberá registrar su regreso al arribar. El barco que se
       retire de una prueba deberá notificarlo al Comité de Regata antes de dejar el área de regatas,
@@ -440,8 +459,9 @@
       <p>25.2. Rige íntegramente la declaración de riesgo del Aviso de Regata y la regla 3 del RRV:
       <em>la responsabilidad de la decisión de un barco de participar en una prueba o de continuar en
       regata es solamente suya.</em></p>
-      <p>25.3. Seguro: cada barco participante debe mantener vigente un seguro de responsabilidad
-      civil frente a terceros durante todo el evento.</p>`);
+      <p>25.3. Seguro: rige lo establecido en el punto 16 del Aviso de Regata — la constancia de
+      seguro es opcional para competir y sólo obligatoria para los barcos que usen amarra de cortesía
+      o el fondeadero del Club.</p>`);
 
     return { tipo: 'instrucciones', titulo: 'INSTRUCCIONES DE REGATA', secciones: S };
   }

@@ -160,6 +160,11 @@
           <input type="tel" id="emergencia_tel" required maxlength="40">
         </div>
       </div>
+      <div class="check">
+        <input type="checkbox" id="solicita_amarra_cortesia">
+        <label for="solicita_amarra_cortesia">Solicito amarra de cortesía / ingreso al fondeadero
+          del Club Náutico Bariloche</label>
+      </div>
       <div class="grid g3">
         <div class="field">
           <label for="seguro_compania">Compañía aseguradora</label>
@@ -175,11 +180,12 @@
         </div>
       </div>
       <div class="field">
-        <label for="seguro_archivo">Constancia de seguro (PDF o foto)</label>
+        <label for="seguro_archivo">Constancia de seguro (PDF o foto) <span class="req" id="reqSeguro" style="display:none">*</span></label>
         <input type="file" id="seguro_archivo" accept="application/pdf,image/*">
       </div>
-      <div class="hint">Se exige seguro de responsabilidad civil frente a terceros vigente durante todo el
-        evento. Sin constancia de cobertura, el barco no será autorizado a largar.</div>
+      <div class="hint">Para competir, la constancia de seguro es <strong>opcional</strong>. Es
+        <strong>obligatoria</strong> únicamente si tildaste "amarra de cortesía / fondeadero" arriba —
+        sin ella no vas a poder hacer uso de esas instalaciones.</div>
     </fieldset>
 
     <fieldset>

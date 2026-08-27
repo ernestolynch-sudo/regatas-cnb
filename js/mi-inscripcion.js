@@ -242,6 +242,11 @@
             <div class="field"><label>Contacto de emergencia — teléfono</label>
               <input id="m_emergencia_tel" value="${U.esc(i.emergencia_tel || '')}" ${editable ? '' : 'disabled'}></div>
           </div>
+          <div class="check">
+            <input type="checkbox" id="m_solicita_amarra_cortesia" ${i.solicita_amarra_cortesia ? 'checked' : ''} ${editable ? '' : 'disabled'}>
+            <label for="m_solicita_amarra_cortesia">Solicito amarra de cortesía / ingreso al fondeadero
+              del Club — el seguro es obligatorio en ese caso</label>
+          </div>
           <div class="grid g3">
             <div class="field"><label>Compañía aseguradora</label>
               <input id="m_seguro_compania" value="${U.esc(i.seguro_compania || '')}" ${editable ? '' : 'disabled'}></div>
@@ -251,7 +256,7 @@
               <input type="date" id="m_seguro_vencimiento" value="${U.esc(i.seguro_vencimiento || '')}" ${editable ? '' : 'disabled'}></div>
           </div>
           <div class="field">
-            <label>Constancia de seguro (PDF o foto)</label>
+            <label>Constancia de seguro (PDF o foto)${i.solicita_amarra_cortesia ? ' <span class="req">*</span>' : ''}</label>
             ${docBlock(i, 'seguro_archivo_path', 'seguro', editable)}
           </div>
         </fieldset>
@@ -294,6 +299,12 @@
     if (editable) {
       U.$('#frmMi').addEventListener('submit', async e => {
         e.preventDefault();
+        const pideAmarra = U.$('#m_solicita_amarra_cortesia').checked;
+        if (pideAmarra && !i.seguro_archivo_path) {
+          U.aviso('#avisos', 'error', 'Adjuntá la constancia de seguro: es obligatoria para solicitar amarra de cortesía o el ingreso al fondeadero.');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
         const btn = U.$('#btnGuardarMi');
         btn.disabled = true; btn.textContent = 'Guardando…';
         const g = sel => U.$(sel).value;
@@ -312,6 +323,7 @@
           tripulantes: leerTripulantes(),
           emergencia_nombre: g('#m_emergencia_nombre').trim(),
           emergencia_tel: g('#m_emergencia_tel').trim(),
+          solicita_amarra_cortesia: pideAmarra,
           seguro_compania: g('#m_seguro_compania').trim() || null,
           seguro_poliza: g('#m_seguro_poliza').trim() || null,
           seguro_vencimiento: g('#m_seguro_vencimiento') || null,

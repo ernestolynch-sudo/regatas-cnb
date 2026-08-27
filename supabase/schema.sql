@@ -260,9 +260,12 @@ create table if not exists public.inscripciones (
   seguro_compania    text,
   seguro_poliza      text,
   seguro_vencimiento date,
+  -- El seguro es opcional para competir; obligatorio sólo para quien pida amarra de
+  -- cortesía o ingreso al fondeadero del Club (ver Aviso de Regata, punto 16).
+  solicita_amarra_cortesia boolean not null default false,
 
   -- Documentos adjuntos (Supabase Storage, bucket 'inscripciones-docs')
-  seguro_archivo_path       text,   -- constancia de seguro (PDF/foto) — obligatorio
+  seguro_archivo_path       text,   -- constancia de seguro (PDF/foto) — obligatoria si solicita_amarra_cortesia
   tripulantes_archivo_path  text,   -- listado de tripulantes firmado (PDF) — opcional
   comprobante_pago_path     text,   -- comprobante de pago del arancel (PDF/foto) — obligatorio
   carnet_archivo_path       text,   -- foto del carnet de timonel — opcional
@@ -298,6 +301,7 @@ alter table public.inscripciones add column if not exists comprobante_pago_path 
 alter table public.inscripciones add column if not exists carnet_archivo_path       text;
 alter table public.inscripciones add column if not exists licencia_fay_archivo_path text;
 alter table public.inscripciones add column if not exists matricula_rey             text;
+alter table public.inscripciones add column if not exists solicita_amarra_cortesia  boolean not null default false;
 
 create index if not exists idx_insc_evento on public.inscripciones(evento_id);
 create index if not exists idx_insc_estado on public.inscripciones(estado);
@@ -373,13 +377,18 @@ begin
      or coalesce((p->>'acepta_riesgo')::boolean, false) is not true then
     raise exception 'Debés aceptar el Reglamento y la declaración de riesgo.';
   end if;
+  if coalesce((p->>'solicita_amarra_cortesia')::boolean, false)
+     and coalesce(p->>'seguro_archivo_path','') = '' then
+    raise exception 'La constancia de seguro es obligatoria para solicitar amarra de cortesía o el ingreso al fondeadero.';
+  end if;
 
   insert into public.inscripciones (
     evento_id, clase_id, nombre_barco, num_vela, modelo, club, codigo_flota,
     rating, rating_origen, matricula_rey,
     timonel_nombre, timonel_dni, timonel_nacimiento, timonel_email, timonel_tel,
     timonel_licencia_fay, timonel_socio, tripulantes,
-    emergencia_nombre, emergencia_tel, seguro_compania, seguro_poliza, seguro_vencimiento,
+    emergencia_nombre, emergencia_tel, solicita_amarra_cortesia,
+    seguro_compania, seguro_poliza, seguro_vencimiento,
     seguro_archivo_path, tripulantes_archivo_path, comprobante_pago_path,
     carnet_archivo_path, licencia_fay_archivo_path,
     acepta_rrv, acepta_riesgo, autoriza_menor, observaciones,
@@ -392,7 +401,7 @@ begin
     p->>'timonel_email', p->>'timonel_tel',
     p->>'timonel_licencia_fay', coalesce((p->>'timonel_socio')::boolean, true),
     coalesce(p->'tripulantes', '[]'::jsonb),
-    p->>'emergencia_nombre', p->>'emergencia_tel',
+    p->>'emergencia_nombre', p->>'emergencia_tel', coalesce((p->>'solicita_amarra_cortesia')::boolean, false),
     p->>'seguro_compania', p->>'seguro_poliza', nullif(p->>'seguro_vencimiento','')::date,
     p->>'seguro_archivo_path', p->>'tripulantes_archivo_path', p->>'comprobante_pago_path',
     p->>'carnet_archivo_path', p->>'licencia_fay_archivo_path',

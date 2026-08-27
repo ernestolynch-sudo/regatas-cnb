@@ -739,6 +739,11 @@
         <strong>Socio:</strong> ${i.timonel_socio ? 'sí' : 'no'} ·
         <strong>Menor con autorización:</strong> ${i.autoriza_menor ? 'sí' : 'no'}</p>
         ${i.observaciones ? '<p class="small"><strong>Observaciones:</strong> ' + U.esc(i.observaciones) + '</p>' : ''}
+        <div class="check">
+          <input type="checkbox" id="i_solicita_amarra_cortesia" ${i.solicita_amarra_cortesia ? 'checked' : ''}>
+          <label for="i_solicita_amarra_cortesia">Solicita amarra de cortesía / ingreso al fondeadero
+            — el seguro es obligatorio para este barco</label>
+        </div>
       </fieldset>
       <fieldset><legend>Documentos adjuntos</legend>
         ${i.id ? DOCS_INSC.map(d => `
@@ -768,6 +773,7 @@
         timonel_tel: g('timonel_tel').trim(),
         estado: g('estado'), pago_estado: g('pago_estado'),
         monto: g('monto') === '' ? null : +g('monto'),
+        solicita_amarra_cortesia: U.$('#i_solicita_amarra_cortesia', bg).checked,
         motivo_rechazo: g('motivo_rechazo') || null,
         revisado_por: st.usuario.email, revisado_at: new Date().toISOString()
       };
@@ -802,6 +808,7 @@
       { titulo: 'Socio', valor: i => i.timonel_socio ? 'SI' : 'NO' },
       { titulo: 'Tripulantes', valor: i => (i.tripulantes || []).map(t => t.nombre).join(' | ') },
       { titulo: 'Emergencia', valor: i => (i.emergencia_nombre || '') + ' ' + (i.emergencia_tel || '') },
+      { titulo: 'Amarra de cortesía', valor: i => i.solicita_amarra_cortesia ? 'SI' : 'NO' },
       { titulo: 'Seguro', valor: i => (i.seguro_compania || '') + ' ' + (i.seguro_poliza || '') },
       { titulo: 'Vto. seguro', valor: 'seguro_vencimiento' },
       { titulo: 'Doc. seguro', valor: i => i.seguro_archivo_path ? 'SI' : 'NO' },

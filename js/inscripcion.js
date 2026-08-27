@@ -84,6 +84,7 @@
     U.$('#clase_id').addEventListener('change', alCambiarClase);
     U.$('#timonel_nacimiento').addEventListener('change', alCambiarEdad);
     U.$('#btnAddTrip').addEventListener('click', () => filaTripulante());
+    U.$('#solicita_amarra_cortesia').addEventListener('change', alCambiarAmarra);
     U.$('#frm').addEventListener('submit', enviar);
 
     const arancel = [];
@@ -134,6 +135,12 @@
     U.$('#autoriza_menor').required = menor;
   }
 
+  function alCambiarAmarra() {
+    const pide = U.$('#solicita_amarra_cortesia').checked;
+    U.$('#seguro_archivo').required = pide;
+    U.$('#reqSeguro').style.display = pide ? '' : 'none';
+  }
+
   let nTrip = 0;
   function filaTripulante(v) {
     v = v || {};
@@ -172,6 +179,10 @@
     const c = claseSel();
     if (!c) { U.aviso('#avisos', 'error', 'Seleccioná la clase en la que vas a participar.'); return; }
     if (!U.$('#comprobante_archivo').files[0]) { U.aviso('#avisos', 'error', 'Adjuntá el comprobante de pago: es obligatorio.'); return; }
+    if (U.$('#solicita_amarra_cortesia').checked && !U.$('#seguro_archivo').files[0]) {
+      U.aviso('#avisos', 'error', 'Adjuntá la constancia de seguro: es obligatoria para solicitar amarra de cortesía o el ingreso al fondeadero.');
+      return;
+    }
 
     btn.disabled = true; btn.textContent = 'Enviando…';
 
@@ -221,6 +232,7 @@
 
       emergencia_nombre: U.$('#emergencia_nombre').value.trim(),
       emergencia_tel: U.$('#emergencia_tel').value.trim(),
+      solicita_amarra_cortesia: U.$('#solicita_amarra_cortesia').checked,
       seguro_compania: U.$('#seguro_compania').value.trim() || null,
       seguro_poliza: U.$('#seguro_poliza').value.trim() || null,
       seguro_vencimiento: U.$('#seguro_vencimiento').value || null,
