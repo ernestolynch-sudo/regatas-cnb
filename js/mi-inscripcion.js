@@ -228,10 +228,6 @@
           <legend>Tripulación</legend>
           <div id="tripulantes"></div>
           ${editable ? '<button type="button" class="btn ghost sm" id="btnAddTrip">+ Agregar tripulante</button>' : ''}
-          <div class="field" style="margin-top:13px">
-            <label>Listado de tripulantes firmado (PDF, opcional)</label>
-            ${docBlock(i, 'tripulantes_archivo_path', 'tripulantes', editable)}
-          </div>
         </fieldset>
 
         <fieldset>

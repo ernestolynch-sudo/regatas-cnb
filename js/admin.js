@@ -822,8 +822,26 @@
     U.descargar('inscripciones-' + st.ev.codigo + '.csv', U.csv(st.insc, cols), 'text/csv');
   }
 
+  /** Edad en años a partir de una fecha 'YYYY-MM-DD', o null si no hay fecha. */
+  function edadAnios(nacimiento) {
+    if (!nacimiento) return null;
+    const n = U.fecha(nacimiento), h = new Date();
+    let edad = h.getFullYear() - n.getFullYear();
+    const m = h.getMonth() - n.getMonth();
+    if (m < 0 || (m === 0 && h.getDate() < n.getDate())) edad--;
+    return edad;
+  }
+
   function listaLargada() {
     const conf = st.insc.filter(i => i.estado === 'confirmada');
+    const persona = (nombre, dni, nacimiento) => {
+      const edad = edadAnios(nacimiento);
+      const menor = edad !== null && edad < 18;
+      return U.esc(nombre || '________________________') +
+        ' · DNI ' + U.esc(dni || '__________') +
+        ' · Nac. ' + (nacimiento ? U.fechaCorta(nacimiento) : '__/__/____') +
+        (menor ? ' · <strong>MENOR</strong> — autorización responsable: ________________________' : '');
+    };
     const html = `<article class="doc-regata">
       <header class="doc-head"><div><div class="doc-club">CLUB NÁUTICO BARILOCHE</div>
         <div class="doc-sub">Comisión de Vela y Motor</div></div></header>
@@ -835,22 +853,28 @@
                       .sort((a, b) => String(a.num_vela).localeCompare(String(b.num_vela), 'es', { numeric: true }));
         if (!l.length) return '';
         return `<section class="sec"><h2>${U.esc(c.nombre)} — ${l.length} barcos</h2>
-          <table><tr><th>Nº vela</th><th>Barco</th><th>Timonel</th><th>Tripulación</th>
+          <table><tr><th>Nº vela</th><th>Barco</th><th>Timonel (DNI · nacimiento)</th><th>Tripulación (DNI · nacimiento)</th>
           ${c.sistema !== 'monotipo' ? '<th>Rating</th><th>TCF</th>' : ''}
           <th>Salida</th><th>Regreso</th></tr>
-          ${l.map(i => `<tr><td>${U.esc(i.num_vela)}</td><td>${U.esc(i.nombre_barco)}</td>
-            <td>${U.esc(i.timonel_nombre)}</td>
-            <td>${U.esc((i.tripulantes || []).map(t => t.nombre).join(', '))}</td>
+          ${l.map(i => {
+            const trip = i.tripulantes || [];
+            return `<tr><td>${U.esc(i.num_vela)}</td><td>${U.esc(i.nombre_barco)}</td>
+            <td style="white-space:normal">${persona(i.timonel_nombre, i.timonel_dni, i.timonel_nacimiento)}</td>
+            <td style="white-space:normal">${trip.length
+              ? trip.map(t => persona(t.nombre, t.dni, t.nacimiento)).join('<br>')
+              : '________________________ · DNI __________ · Nac. __/__/____'}</td>
             ${c.sistema !== 'monotipo' ? '<td>' + (i.rating ?? '—') + '</td><td>' +
               (i.rating != null ? S.tcfPhrf(i.rating, c.phrf_a, c.phrf_b).toFixed(4) : '—') + '</td>' : ''}
-            <td style="width:60px"></td><td style="width:60px"></td></tr>`).join('')}
+            <td style="width:60px"></td><td style="width:60px"></td></tr>`;
+          }).join('')}
         </table></section>`;
       }).join('')}
       <section class="sec"><h2>Control</h2>
         <p>Oficial Principal de Regata: ${U.esc(st.ev.oficial_principal || '________________________')} ·
         Firma: ________________________</p>
         <p class="small">Todo barco debe registrar salida y regreso. El barco que se retira debe avisar
-        al Comité de Regata por VHF canal ${U.esc(st.ev.canal_vhf || '71')} antes de dejar el área de regatas.</p>
+        al Comité de Regata por VHF canal ${U.esc(st.ev.canal_vhf || '71')} antes de dejar el área de regatas.
+        Todo menor de edad a bordo debe contar con la autorización firmada de su responsable legal.</p>
       </section>
     </article>`;
     U.imprimir(html, 'Lista de largada — ' + st.ev.codigo);

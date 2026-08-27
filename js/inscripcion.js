@@ -116,10 +116,8 @@
         ' · Pruebas previstas: ' + (c.pruebas_previstas || '—') +
         (c.tripulacion ? ' · Tripulación habitual: ' + c.tripulacion : '')
       : '';
-    // pre-cargar filas de tripulantes según la clase
-    if (c && c.tripulacion > 1 && !U.$$('#tripulantes .trip').length) {
-      for (let i = 1; i < c.tripulacion; i++) filaTripulante();
-    }
+    // Arranca siempre con 1 fila de tripulante; el resto se agrega a mano con el botón.
+    if (!U.$$('#tripulantes .trip').length) filaTripulante();
   }
 
   function alCambiarEdad() {
@@ -189,14 +187,13 @@
     const socio = U.$('#timonel_socio').checked;
     const monto = socio ? E.evento.arancel_socio : E.evento.arancel_invitado;
 
-    let seguro_archivo_path = null, tripulantes_archivo_path = null, comprobante_pago_path = null,
+    let seguro_archivo_path = null, comprobante_pago_path = null,
         carnet_archivo_path = null, licencia_fay_archivo_path = null;
     try {
       const carpeta = crypto.randomUUID();
-      [seguro_archivo_path, tripulantes_archivo_path, comprobante_pago_path,
+      [seguro_archivo_path, comprobante_pago_path,
        carnet_archivo_path, licencia_fay_archivo_path] = await Promise.all([
         subirDoc(carpeta, 'seguro_archivo', 'seguro'),
-        subirDoc(carpeta, 'trip_archivo', 'tripulantes'),
         subirDoc(carpeta, 'comprobante_archivo', 'comprobante'),
         subirDoc(carpeta, 'carnet_archivo', 'carnet'),
         subirDoc(carpeta, 'licencia_fay_archivo', 'licencia_fay')
@@ -236,7 +233,7 @@
       seguro_compania: U.$('#seguro_compania').value.trim() || null,
       seguro_poliza: U.$('#seguro_poliza').value.trim() || null,
       seguro_vencimiento: U.$('#seguro_vencimiento').value || null,
-      seguro_archivo_path, tripulantes_archivo_path, comprobante_pago_path,
+      seguro_archivo_path, comprobante_pago_path,
 
       acepta_rrv: U.$('#acepta_rrv').checked,
       acepta_riesgo: U.$('#acepta_riesgo').checked,
