@@ -242,7 +242,8 @@
 
       estado: 'pendiente',
       pago_estado: 'impago',
-      monto: monto || null
+      monto: monto || null,
+      titular_transferencia: U.$('#titular_transferencia').value.trim() || null
     };
 
     const { data, error } = await db.rpc('crear_inscripcion_publica', { p: reg }).single();

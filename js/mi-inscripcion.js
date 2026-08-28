@@ -263,6 +263,10 @@
             <label>Comprobante de pago del arancel <span class="req">*</span></label>
             ${docBlock(i, 'comprobante_pago_path', 'comprobante', editable)}
           </div>
+          <div class="field">
+            <label>Titular de la transferencia (si no es el timonel)</label>
+            <input id="m_titular_transferencia" value="${U.esc(i.titular_transferencia || '')}" ${editable ? '' : 'disabled'}>
+          </div>
         </fieldset>
 
         <fieldset>
@@ -323,7 +327,8 @@
           seguro_compania: g('#m_seguro_compania').trim() || null,
           seguro_poliza: g('#m_seguro_poliza').trim() || null,
           seguro_vencimiento: g('#m_seguro_vencimiento') || null,
-          observaciones: g('#m_observaciones').trim() || null
+          observaciones: g('#m_observaciones').trim() || null,
+          titular_transferencia: g('#m_titular_transferencia').trim() || null
         };
         if (U.$('#m_rating')) reg.rating = g('#m_rating') === '' ? null : Number(g('#m_rating'));
         if (U.$('#m_rating_origen')) reg.rating_origen = g('#m_rating_origen') || null;

@@ -634,7 +634,7 @@
         </div>
         ${st.insc.length ? `<div class="tabla-wrap" style="margin-top:12px"><table class="t">
           <thead><tr><th>Folio</th><th>Clase</th><th>Nº vela</th><th>Barco</th><th>Timonel</th>
-            <th>Club</th><th class="num">Rating</th><th>Contacto</th><th>Seguro</th><th>Estado</th><th>Pago</th><th></th></tr></thead>
+            <th>Club</th><th class="num">Rating</th><th>Contacto</th><th>Seguro</th><th>Titular transf.</th><th>Estado</th><th>Pago</th><th></th></tr></thead>
           <tbody>${st.insc.map(i => {
             const cl = st.clases.find(c => c.id === i.clase_id) || {};
             const ee = U.ESTADOS_INSC[i.estado] || {};
@@ -648,6 +648,7 @@
               <td class="num">${i.rating ?? '—'}</td>
               <td class="small">${U.esc(i.timonel_tel || '')}</td>
               <td>${i.seguro_poliza ? '<span class="chip verde">Sí</span>' : '<span class="chip rojo">Falta</span>'}</td>
+              <td class="small">${i.titular_transferencia ? U.esc(i.titular_transferencia) : '<span class="muted">(timonel)</span>'}</td>
               <td><span class="chip ${ee.chip || ''}">${ee.txt || i.estado}</span></td>
               <td><span class="chip ${i.pago_estado === 'pagado' ? 'verde' : i.pago_estado === 'exento' ? 'azul' : 'naranja'}">${i.pago_estado}</span></td>
               <td class="right"><button class="btn ghost sm" data-i="${i.id}">Abrir</button></td>
@@ -730,6 +731,8 @@
         </select></div>
         <div class="field"><label>Monto ($)</label><input type="number" step="0.01" id="i_monto" value="${i.monto ?? ''}"></div>
       </div>
+      <div class="field"><label>Titular de la transferencia (si no es el timonel)</label>
+        <input id="i_titular_transferencia" value="${U.esc(i.titular_transferencia || '')}"></div>
       <fieldset><legend>Tripulación y seguridad</legend>
         <p class="small">${trip.length ? trip.map(t => U.esc(t.nombre) + (t.dni ? ' (DNI ' + U.esc(t.dni) + ')' : '')).join(' · ') : '<span class="muted">Sin tripulantes declarados.</span>'}</p>
         <p class="small"><strong>Emergencia:</strong> ${U.esc(i.emergencia_nombre || '—')} · ${U.esc(i.emergencia_tel || '—')}<br>
@@ -773,6 +776,7 @@
         timonel_tel: g('timonel_tel').trim(),
         estado: g('estado'), pago_estado: g('pago_estado'),
         monto: g('monto') === '' ? null : +g('monto'),
+        titular_transferencia: g('titular_transferencia').trim() || null,
         solicita_amarra_cortesia: U.$('#i_solicita_amarra_cortesia', bg).checked,
         motivo_rechazo: g('motivo_rechazo') || null,
         revisado_por: st.usuario.email, revisado_at: new Date().toISOString()
@@ -817,7 +821,8 @@
       { titulo: 'Doc. carnet', valor: i => i.carnet_archivo_path ? 'SI' : 'NO' },
       { titulo: 'Doc. licencia FAY', valor: i => i.licencia_fay_archivo_path ? 'SI' : 'NO' },
       { titulo: 'Estado', valor: 'estado' }, { titulo: 'Pago', valor: 'pago_estado' },
-      { titulo: 'Monto', valor: 'monto' }, { titulo: 'Observaciones', valor: 'observaciones' }
+      { titulo: 'Monto', valor: 'monto' }, { titulo: 'Titular transferencia', valor: 'titular_transferencia' },
+      { titulo: 'Observaciones', valor: 'observaciones' }
     ];
     U.descargar('inscripciones-' + st.ev.codigo + '.csv', U.csv(st.insc, cols), 'text/csv');
   }

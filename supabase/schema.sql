@@ -283,6 +283,8 @@ create table if not exists public.inscripciones (
   pago_estado   text not null default 'impago'
                 check (pago_estado in ('impago','pagado','exento')),
   monto         numeric(12,2),
+  titular_transferencia text,  -- nombre del titular de la transferencia, si no es el timonel
+                               -- (para poder alocar el pago cuando paga otro tripulante)
   motivo_rechazo text,
   revisado_por  text,
   revisado_at   timestamptz,
@@ -302,6 +304,7 @@ alter table public.inscripciones add column if not exists carnet_archivo_path   
 alter table public.inscripciones add column if not exists licencia_fay_archivo_path text;
 alter table public.inscripciones add column if not exists matricula_rey             text;
 alter table public.inscripciones add column if not exists solicita_amarra_cortesia  boolean not null default false;
+alter table public.inscripciones add column if not exists titular_transferencia     text;
 
 create index if not exists idx_insc_evento on public.inscripciones(evento_id);
 create index if not exists idx_insc_estado on public.inscripciones(estado);
@@ -392,7 +395,7 @@ begin
     seguro_archivo_path, tripulantes_archivo_path, comprobante_pago_path,
     carnet_archivo_path, licencia_fay_archivo_path,
     acepta_rrv, acepta_riesgo, autoriza_menor, observaciones,
-    estado, pago_estado, monto
+    estado, pago_estado, monto, titular_transferencia
   ) values (
     v_evento_id, (p->>'clase_id')::uuid, p->>'nombre_barco', p->>'num_vela',
     p->>'modelo', p->>'club', p->>'codigo_flota',
@@ -406,7 +409,7 @@ begin
     p->>'seguro_archivo_path', p->>'tripulantes_archivo_path', p->>'comprobante_pago_path',
     p->>'carnet_archivo_path', p->>'licencia_fay_archivo_path',
     true, true, coalesce((p->>'autoriza_menor')::boolean, false), p->>'observaciones',
-    'pendiente', 'impago', nullif(p->>'monto','')::numeric
+    'pendiente', 'impago', nullif(p->>'monto','')::numeric, p->>'titular_transferencia'
   )
   returning * into v_row;
 
