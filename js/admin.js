@@ -1469,6 +1469,12 @@ Organiza: Comisión de Vela y Motor del CNB. Regata conforme al RRV ${D.RRV_CICL
             const cuerpo = await error.context.json();
             if (cuerpo && cuerpo.error) detalle = cuerpo.error;
           } catch (_) { /* la respuesta no era JSON: queda el mensaje genérico */ }
+          // Si ni siquiera se pudo llegar a la función, lo más probable es que falte
+          // desplegarla en Supabase — decirlo explícitamente ahorra media hora de búsqueda.
+          if (/failed to send a request|fetch/i.test(detalle || '')) {
+            detalle = 'no se pudo contactar la función «crear-usuario-panel». Verificá que esté ' +
+              'desplegada en Supabase → Edge Functions con ese nombre exacto.';
+          }
         }
         if (detalle) { alert('No se pudo crear el usuario: ' + detalle); return false; }
 
