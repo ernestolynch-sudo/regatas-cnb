@@ -70,15 +70,16 @@
 
     U.$('#btnSalir').addEventListener('click', async () => { await db.auth.signOut(); location.reload(); });
 
-    // El link de "configurar/recuperar PIN" deja una sesión técnica activa para poder
-    // guardar el PIN nuevo (Supabase la necesita para eso), pero NO debe dejar entrar al
-    // panel directo: hay que mostrar primero la pantalla para elegir el PIN. onAuthStateChange
-    // dispara solo, al suscribirse, un evento con el estado inicial real (PASSWORD_RECOVERY
-    // si venís de ese link, SIGNED_IN/INITIAL_SESSION si ya tenías sesión) — por eso alcanza
-    // con este único listener, sin adivinar nada mirando la URL a mano.
+    // El link de "configurar/recuperar PIN" deja una sesión activa para poder guardar el PIN
+    // nuevo, pero NO debe dejar entrar al panel directo: hay que mostrar primero la pantalla
+    // para elegirlo. Lo marcamos nosotros mismos con ?setpin=1 en el redirectTo (ver
+    // enviarRecuperoPin) en vez de confiar en el tipo de evento de Supabase, porque el link
+    // usa signInWithOtp — que dispara SIGNED_IN igual que un login común, no PASSWORD_RECOVERY.
+    const pidiendoPin = new URLSearchParams(location.search).get('setpin') === '1';
+
     db.auth.onAuthStateChange((evt, s) => {
       if (evt === 'PASSWORD_RECOVERY') { mostrarNuevoPin(); return; }
-      if (s && !st.usuario) verificar(s);
+      if (s && !st.usuario) { if (pidiendoPin) mostrarNuevoPin(); else verificar(s); }
     });
   });
 
@@ -102,8 +103,13 @@
     const email = U.$('#emailPin').value.trim().toLowerCase();
     if (!email) return;
     U.aviso('#pinAviso', 'info', 'Enviando enlace…');
-    const { error } = await db.auth.resetPasswordForEmail(email, {
-      redirectTo: location.origin + location.pathname
+    // signInWithOtp (magic link) funciona tanto para quien ya tiene cuenta como para quien
+    // todavía no inició sesión nunca — a diferencia de resetPasswordForEmail, que no manda
+    // nada si la cuenta de acceso no existía todavía (típico de un miembro de comisión recién
+    // agregado). El parámetro ?setpin=1 es nuestro, para saber al volver que hay que mostrar
+    // la pantalla de elegir PIN en vez de dejar entrar directo al panel.
+    const { error } = await db.auth.signInWithOtp({
+      email, options: { emailRedirectTo: location.origin + location.pathname + '?setpin=1' }
     });
     U.aviso('#pinAviso', error ? 'error' : 'ok',
       error ? U.esc(U.err(error))
