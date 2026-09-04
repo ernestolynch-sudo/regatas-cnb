@@ -1396,35 +1396,90 @@ Organiza: Comisión de Vela y Motor del CNB. Regata conforme al RRV ${D.RRV_CICL
     const es = st.rol === 'admin';
     U.$('#panelCfg').innerHTML = `<div class="card">
       <div class="row"><h2 class="mt0 mb0">Usuarios habilitados</h2><div class="spacer"></div>
-        ${es ? '<button class="btn sm" id="btnNU">+ Habilitar usuario</button>' : '<span class="chip">Sólo lectura — se requiere rol admin</span>'}</div>
+        ${es ? '<button class="btn sm" id="btnNU">+ Crear usuario</button>' : '<span class="chip">Sólo lectura — se requiere rol admin</span>'}</div>
       <div class="tabla-wrap" style="margin-top:12px"><table class="t">
         <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Activo</th><th></th></tr></thead>
         <tbody>${(data || []).map(u => `<tr>
           <td>${U.esc(u.nombre)}</td><td class="mono small">${U.esc(u.email)}</td>
           <td><span class="chip ${u.rol === 'admin' ? 'naranja' : 'azul'}">${u.rol}</span></td>
           <td>${es ? `<input type="checkbox" data-ua="${u.id}" ${u.activo ? 'checked' : ''}>` : (u.activo ? 'Sí' : 'No')}</td>
-          <td class="right">${es ? `<button class="btn ghost sm" data-udel="${u.id}">✕</button>` : ''}</td></tr>`).join('')}
+          <td class="right">${es ? `<button class="btn ghost sm" data-upin="${U.esc(u.email)}" data-unom="${U.esc(u.nombre)}" data-urol="${U.esc(u.rol)}">PIN nuevo</button>
+            <button class="btn ghost sm" data-udel="${u.id}">✕</button>` : ''}</td></tr>`).join('')}
         </tbody></table></div>
       <p class="small muted" style="margin-top:11px">Roles: <strong>admin</strong> administra usuarios ·
         <strong>comisión</strong> ABM de eventos y resultados · <strong>oficial</strong> carga de llegadas ·
-        <strong>secretaria</strong> inscripciones y cobros.</p></div>`;
+        <strong>secretaria</strong> inscripciones y cobros.</p>
+      ${es ? '<p class="small muted">«Crear usuario» da de alta la cuenta con un PIN provisorio que le pasás vos — no depende del correo. El usuario después lo cambia desde «¿Todavía no tenés PIN o lo olvidaste?».</p>' : ''}</div>`;
 
     if (!es) return;
-    U.$('#btnNU').addEventListener('click', () => modal('Habilitar usuario', `
-      <div class="field"><label>Nombre</label><input id="un"></div>
-      <div class="field"><label>Email</label><input id="ue" type="email"></div>
-      <div class="field"><label>Rol</label><select id="ur">
-        <option value="comision">Comisión</option><option value="oficial">Oficial de regata</option>
-        <option value="secretaria">Secretaría</option><option value="admin">Administrador</option>
-      </select></div>`, [{ txt: 'Cancelar', cls: 'ghost' }, { txt: 'Habilitar', fn: async bg => {
-        await guardar('usuarios_autorizados', { nombre: U.$('#un', bg).value.trim(),
-          email: U.$('#ue', bg).value.trim().toLowerCase(), rol: U.$('#ur', bg).value });
-        cfgUsuarios();
-      } }]));
+    U.$('#btnNU').addEventListener('click', () => formUsuario());
+    U.$$('[data-upin]').forEach(b => b.addEventListener('click', () =>
+      formUsuario({ email: b.dataset.upin, nombre: b.dataset.unom, rol: b.dataset.urol })));
     U.$$('[data-ua]').forEach(c => c.addEventListener('change', () =>
       guardar('usuarios_autorizados', { id: c.dataset.ua, activo: c.checked })));
     U.$$('[data-udel]').forEach(b => b.addEventListener('click', async () => {
       if (await borrar('usuarios_autorizados', b.dataset.udel, '¿Quitar el acceso de este usuario?')) cfgUsuarios();
     }));
+  }
+
+  /** PIN provisorio de 6 dígitos, aleatorio de verdad (no Math.random). */
+  function pinProvisorio() {
+    const n = new Uint32Array(1);
+    crypto.getRandomValues(n);
+    return String(n[0] % 1000000).padStart(6, '0');
+  }
+
+  /** Alta de usuario del panel, o PIN nuevo si ya existe (u con datos precargados). */
+  function formUsuario(u) {
+    const existente = !!u;
+    u = u || {};
+    const pin = pinProvisorio();
+    const html = `
+      <div class="field"><label>Nombre</label><input id="un" value="${U.esc(u.nombre || '')}"></div>
+      <div class="field"><label>Email</label>
+        <input id="ue" type="email" value="${U.esc(u.email || '')}" ${existente ? 'readonly' : ''}></div>
+      <div class="field"><label>Rol</label><select id="ur">
+        ${[['comision', 'Comisión'], ['oficial', 'Oficial de regata'],
+           ['secretaria', 'Secretaría'], ['admin', 'Administrador']]
+          .map(([v, t]) => `<option value="${v}" ${u.rol === v ? 'selected' : ''}>${t}</option>`).join('')}
+      </select></div>
+      <div class="field"><label>PIN provisorio (6 dígitos)</label>
+        <input id="up" inputmode="numeric" maxlength="6" value="${pin}">
+        <div class="hint">Pasale este PIN a la persona. Con eso entra al panel y después lo cambia
+          por el que quiera desde «¿Todavía no tenés PIN o lo olvidaste?».</div></div>`;
+
+    modal(existente ? 'PIN nuevo — ' + (u.nombre || u.email) : 'Crear usuario del panel', html,
+      [{ txt: 'Cancelar', cls: 'ghost' },
+       { txt: existente ? 'Generar PIN' : 'Crear', fn: async bg => {
+        const datos = {
+          email: U.$('#ue', bg).value.trim().toLowerCase(),
+          nombre: U.$('#un', bg).value.trim(),
+          rol: U.$('#ur', bg).value,
+          pin: U.$('#up', bg).value.trim()
+        };
+        if (!/^\d{6}$/.test(datos.pin)) { alert('El PIN provisorio debe tener 6 dígitos.'); return false; }
+
+        const { data: r, error } = await db.functions.invoke('crear-usuario-panel', { body: datos });
+        // Ante un status no-2xx, supabase-js deja un mensaje genérico en error.message y el
+        // motivo real en el cuerpo de la respuesta (error.context): lo leemos para mostrarlo.
+        let detalle = (r && r.error) || null;
+        if (!detalle && error) {
+          detalle = error.message;
+          try {
+            const cuerpo = await error.context.json();
+            if (cuerpo && cuerpo.error) detalle = cuerpo.error;
+          } catch (_) { /* la respuesta no era JSON: queda el mensaje genérico */ }
+        }
+        if (detalle) { alert('No se pudo crear el usuario: ' + detalle); return false; }
+
+        cfgUsuarios();
+        modal('Usuario listo', `
+          <p>Cuenta de <strong>${U.esc(datos.email)}</strong> ${r.creado ? 'creada' : 'actualizada'}.</p>
+          <p>PIN provisorio:</p>
+          <p class="mono center" style="font-size:30px;font-weight:700;letter-spacing:5px;color:var(--azul-700)">${U.esc(datos.pin)}</p>
+          <p class="small muted">Pasáselo a la persona por el medio que uses habitualmente. Al entrar puede
+            cambiarlo desde «¿Todavía no tenés PIN o lo olvidaste?».</p>`,
+          [{ txt: 'Listo' }]);
+      } }]);
   }
 })();
