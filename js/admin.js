@@ -77,9 +77,15 @@
     // usa signInWithOtp — que dispara SIGNED_IN igual que un login común, no PASSWORD_RECOVERY.
     const pidiendoPin = new URLSearchParams(location.search).get('setpin') === '1';
 
+    // El setTimeout no es cosmético: supabase-js mantiene un candado mientras corre este
+    // callback, y verificar() consulta usuarios_autorizados — si esa consulta sale desde acá
+    // adentro queda esperando el candado para siempre. Diferirla un tick lo evita.
     db.auth.onAuthStateChange((evt, s) => {
       if (evt === 'PASSWORD_RECOVERY') { mostrarNuevoPin(); return; }
-      if (s && !st.usuario) { if (pidiendoPin) mostrarNuevoPin(); else verificar(s); }
+      if (s && !st.usuario) {
+        if (pidiendoPin) mostrarNuevoPin();
+        else setTimeout(() => verificar(s), 0);
+      }
     });
   });
 

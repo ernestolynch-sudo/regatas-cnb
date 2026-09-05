@@ -16,7 +16,10 @@
     U.$('#btnLogin').addEventListener('click', login);
     U.$('#email').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
     U.$('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
-    db.auth.onAuthStateChange((_e, s) => { if (s) mostrarSesion(); });
+    // El setTimeout no es cosmético: supabase-js mantiene un candado mientras corre este
+    // callback, y cualquier consulta lanzada acá adentro queda esperándolo para siempre.
+    // Diferirla un tick libera el candado y deja que la carga funcione.
+    db.auth.onAuthStateChange((_e, s) => { if (s) setTimeout(mostrarSesion, 0); });
     const { data } = await db.auth.getSession();
     if (data && data.session) mostrarSesion();
   });
