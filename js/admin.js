@@ -149,6 +149,7 @@
     st.usuario = data; st.rol = data.rol;
     U.$('#login').style.display = 'none';
     U.$('#app').style.display = '';
+    U.$('#navPublico').style.display = 'none';
     U.$('#nav').style.display = '';
     aplicarPermisosUI();
     U.$$('#nav a[data-v]').forEach(a => a.addEventListener('click', e => {
