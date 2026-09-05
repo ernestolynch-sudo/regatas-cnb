@@ -755,6 +755,65 @@ create policy insc_docs_update_propio on storage.objects for update to authentic
   using (bucket_id = 'inscripciones-docs' and public.es_dueno_inscripcion_editable(name))
   with check (bucket_id = 'inscripciones-docs' and public.es_dueno_inscripcion_editable(name));
 
+-- ---------------------------------------------------------------------------
+-- 16. BOLSA DE TRIPULANTES
+-- ---------------------------------------------------------------------------
+-- Gente sin barco que quiere navegar. Se anota sola desde el sitio público; la
+-- Comisión los contacta o los conecta con timoneles que necesiten tripulación.
+create table if not exists public.bolsa_tripulantes (
+  id           uuid primary key default gen_random_uuid(),
+  nombre       text not null,
+  apellido     text not null,
+  email        text not null,
+  celular      text not null,
+  nacimiento   date not null,                 -- para verificar mayoría de edad
+  experiencia  text,                          -- resumen libre
+  posicion     text,                          -- posición a bordo sugerida
+  autoriza_menor boolean not null default false,
+  disponible   boolean not null default true, -- la Comisión lo baja cuando consigue barco
+  notas        text,                          -- uso interno de la Comisión
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+create index if not exists idx_bolsa_disponible on public.bolsa_tripulantes(disponible);
+
+drop trigger if exists trg_updated_bolsa on public.bolsa_tripulantes;
+create trigger trg_updated_bolsa before update on public.bolsa_tripulantes
+  for each row execute function public.set_updated_at();
+
+alter table public.bolsa_tripulantes enable row level security;
+
+-- Alta pública: cualquiera puede ofrecerse, pero no leer ni editar la tabla
+-- (ahí están el email y el celular de todos).
+drop policy if exists bolsa_insert_publico on public.bolsa_tripulantes;
+create policy bolsa_insert_publico on public.bolsa_tripulantes for insert to anon, authenticated
+  with check (disponible = true and coalesce(notas, '') = '');
+
+drop policy if exists bolsa_read_comision on public.bolsa_tripulantes;
+create policy bolsa_read_comision on public.bolsa_tripulantes for select to authenticated
+  using (public.es_usuario_habilitado());
+
+drop policy if exists bolsa_write_comision on public.bolsa_tripulantes;
+create policy bolsa_write_comision on public.bolsa_tripulantes for all to authenticated
+  using (public.es_comision()) with check (public.es_comision());
+
+-- Vista pública: quién está disponible y con qué experiencia, SIN datos de
+-- contacto. Para contactarlos hay que pasar por la Comisión.
+create or replace view public.v_bolsa_publica as
+select b.id,
+       b.nombre,
+       b.apellido,
+       b.posicion,
+       b.experiencia,
+       date_part('year', age(b.nacimiento))::int as edad,
+       b.created_at
+from public.bolsa_tripulantes b
+where b.disponible;
+
+alter view public.v_bolsa_publica set (security_invoker = off);
+grant select on public.v_bolsa_publica to anon, authenticated;
+
 -- ============================================================================
 -- FIN DEL ESQUEMA
 -- ============================================================================

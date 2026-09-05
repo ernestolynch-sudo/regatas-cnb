@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bolsa de tripulantes · Regatas CNB</title>
+<meta name="description" content="Bolsa de tripulantes del Club Náutico Bariloche: si no tenés barco y querés navegar, anotate; los timoneles que necesiten tripulación te contactan.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <img src="assets/logo-cnb.jpg" alt="CNB" onerror="this.style.display='none'">
+    <div class="marca"><b>Club Náutico Bariloche</b><span>Comisión de Vela y Motor</span></div>
+    <nav>
+      <a href="index.html">Calendario</a>
+      <a href="bolsa.html" class="on">Tripulantes</a>
+      <a href="mi-inscripcion.html">Mi inscripción</a>
+      <a href="admin.html">Panel de comisión</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero" id="heroInsc">
+  <div class="wrap-sm">
+    <h1>Bolsa de tripulantes</h1>
+    <p>¿No tenés barco y querés navegar? Anotate acá. Los timoneles que necesitan tripulación
+      consultan esta lista, y la Comisión de Vela y Motor te pone en contacto.</p>
+  </div>
+</div>
+
+<div class="wrap-sm" style="margin-top:18px">
+  <div id="avisos"></div>
+
+  <!-- ================= LISTA ================= -->
+  <div class="card">
+    <div class="row">
+      <h2 class="mt0 mb0">Disponibles</h2>
+      <div class="spacer"></div>
+      <button class="btn sm" id="btnAnotarme">+ Quiero anotarme</button>
+    </div>
+    <div id="listaBolsa" style="margin-top:12px"></div>
+    <p class="small muted" style="margin-top:11px">Por privacidad no publicamos correos ni teléfonos.
+      Si querés contactar a alguien de la lista, escribile a la Comisión de Vela y Motor.</p>
+  </div>
+
+  <!-- ================= FORMULARIO ================= -->
+  <form id="frm" style="display:none;margin-top:16px">
+    <fieldset>
+      <legend>Anotarme en la bolsa</legend>
+      <div class="grid g2">
+        <div class="field">
+          <label for="nombre">Nombre <span class="req">*</span></label>
+          <input type="text" id="nombre" required maxlength="60">
+        </div>
+        <div class="field">
+          <label for="apellido">Apellido <span class="req">*</span></label>
+          <input type="text" id="apellido" required maxlength="60">
+        </div>
+      </div>
+      <div class="grid g2">
+        <div class="field">
+          <label for="email">Correo electrónico <span class="req">*</span></label>
+          <input type="email" id="email" required maxlength="120">
+        </div>
+        <div class="field">
+          <label for="celular">Celular <span class="req">*</span></label>
+          <input type="tel" id="celular" required maxlength="40" placeholder="+54 9 294 ...">
+        </div>
+      </div>
+      <div class="field">
+        <label for="nacimiento">Fecha de nacimiento <span class="req">*</span></label>
+        <input type="date" id="nacimiento" required>
+        <div class="hint" id="hintEdad"></div>
+      </div>
+      <div class="check" id="boxMenor" style="display:none">
+        <input type="checkbox" id="autoriza_menor">
+        <label for="autoriza_menor">Soy <strong>menor de edad</strong> y cuento con la autorización de mi
+          madre, padre o responsable legal para navegar. <span class="req">*</span></label>
+      </div>
+      <div class="field">
+        <label for="posicion">Posición a bordo sugerida</label>
+        <select id="posicion">
+          <option value="">— seleccionar —</option>
+          <option>Proa</option>
+          <option>Mástil</option>
+          <option>Pit</option>
+          <option>Trimmer</option>
+          <option>Grinder</option>
+          <option>Táctico / navegante</option>
+          <option>Timonel</option>
+          <option>Sin preferencia / lo que haga falta</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="experiencia">Resumen de experiencia</label>
+        <textarea id="experiencia" maxlength="600" placeholder="Clases en las que navegaste, años de experiencia, regatas o travesías, cursos…"></textarea>
+        <div class="hint">Contá brevemente tu experiencia. Si recién empezás, decilo igual — también hay
+          lugar para quien quiere aprender.</div>
+      </div>
+    </fieldset>
+
+    <div class="card">
+      <div class="row">
+        <div class="small muted" style="flex:1;min-width:220px">
+          Tu nombre, posición y experiencia se publican en la lista. Tu correo y celular
+          <strong>no</strong>: los ve solamente la Comisión.
+        </div>
+        <button type="submit" class="btn" id="btnEnviar">Anotarme</button>
+      </div>
+    </div>
+  </form>
+
+  <div id="confirmacion" style="display:none"></div>
+</div>
+
+<footer class="pie">
+  <div class="wrap-sm">
+    <strong>Club Náutico Bariloche</strong> — Comisión de Vela y Motor · Lago Nahuel Huapi.<br>
+    <a href="https://fay.org/reglamento-de-regatas-a-vela/" target="_blank" rel="noopener">Reglamento de Regatas a Vela (FAY)</a>
+    &nbsp;·&nbsp;
+    <a href="https://www.cic.org.ar/subpaginas/listaderatings.html" target="_blank" rel="noopener">Listado de ratings (CIC)</a>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="js/db.js"></script>
+<script src="js/bolsa.js"></script>
+</body>
+</html>

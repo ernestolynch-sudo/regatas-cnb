@@ -1331,7 +1331,67 @@ Organiza: Comisión de Vela y Motor del CNB. Regata conforme al RRV ${D.RRV_CICL
   // CONFIGURACIÓN
   // =========================================================================
   function pintarTabCfg() {
-    ({ temporadas: cfgTemporadas, clases: cfgClases, usuarios: cfgUsuarios })[st.tabCfg]();
+    ({ temporadas: cfgTemporadas, clases: cfgClases, bolsa: cfgBolsa, usuarios: cfgUsuarios })[st.tabCfg]();
+  }
+
+  // ------------------------------------------------- BOLSA DE TRIPULANTES
+  async function cfgBolsa() {
+    const cont = U.$('#panelCfg');
+    cont.innerHTML = '<div class="card muted">Cargando…</div>';
+    const { data, error } = await db.from('bolsa_tripulantes').select('*')
+      .order('disponible', { ascending: false }).order('created_at', { ascending: false });
+    if (error) { cont.innerHTML = '<div class="alert error">' + U.esc(U.err(error)) + '</div>'; return; }
+
+    const lista = data || [];
+    const puedeEditar = ['admin', 'comision'].includes(st.rol);
+    const disp = lista.filter(t => t.disponible).length;
+
+    cont.innerHTML = `<div class="card">
+      <div class="row">
+        <h2 class="mt0 mb0">Bolsa de tripulantes</h2>
+        <span class="chip ${disp ? 'verde' : ''}">${disp} disponible${disp === 1 ? '' : 's'}</span>
+        <div class="spacer"></div>
+        <button class="btn sec sm" id="btnCSVBolsa">↓ CSV</button>
+      </div>
+      ${lista.length ? `<div class="tabla-wrap" style="margin-top:12px"><table class="t">
+        <thead><tr><th>Nombre</th><th class="num">Edad</th><th>Posición</th><th>Contacto</th>
+          <th>Experiencia</th><th>Disponible</th><th></th></tr></thead>
+        <tbody>${lista.map(t => {
+          const edad = edadAnios(t.nacimiento);
+          const menor = edad !== null && edad < 18;
+          return `<tr${t.disponible ? '' : ' class="desc"'}>
+            <td>${U.esc(t.nombre)} ${U.esc(t.apellido)}</td>
+            <td class="num">${edad ?? '—'}${menor ? ' <span class="chip naranja">menor</span>' : ''}</td>
+            <td>${U.esc(t.posicion || '—')}</td>
+            <td class="small">${U.esc(t.email)}<br>${U.esc(t.celular)}</td>
+            <td style="white-space:normal" class="small">${U.esc(t.experiencia || '—')}</td>
+            <td>${puedeEditar
+              ? `<input type="checkbox" data-bd="${t.id}" ${t.disponible ? 'checked' : ''}>`
+              : (t.disponible ? 'Sí' : 'No')}</td>
+            <td class="right">${puedeEditar ? `<button class="btn ghost sm" data-bdel="${t.id}">✕</button>` : ''}</td>
+          </tr>`;
+        }).join('')}</tbody></table></div>`
+        : '<p class="muted" style="margin-top:12px">Todavía no se anotó nadie en la bolsa.</p>'}
+      <p class="small muted" style="margin-top:11px">Se anotan solos desde
+        <a href="bolsa.html" target="_blank">la página pública</a>, donde se publica el nombre, la posición y
+        la experiencia — el correo y el celular los ves sólo acá. Destildá «Disponible» cuando consigan barco.</p>
+    </div>`;
+
+    U.$('#btnCSVBolsa').addEventListener('click', () => U.descargar('bolsa-tripulantes.csv', U.csv(lista, [
+      { titulo: 'Nombre', valor: 'nombre' }, { titulo: 'Apellido', valor: 'apellido' },
+      { titulo: 'Edad', valor: t => edadAnios(t.nacimiento) ?? '' },
+      { titulo: 'Nacimiento', valor: 'nacimiento' },
+      { titulo: 'Email', valor: 'email' }, { titulo: 'Celular', valor: 'celular' },
+      { titulo: 'Posición', valor: 'posicion' }, { titulo: 'Experiencia', valor: 'experiencia' },
+      { titulo: 'Disponible', valor: t => t.disponible ? 'SI' : 'NO' }
+    ]), 'text/csv'));
+
+    if (!puedeEditar) return;
+    U.$$('[data-bd]', cont).forEach(c => c.addEventListener('change', () =>
+      guardar('bolsa_tripulantes', { id: c.dataset.bd, disponible: c.checked })));
+    U.$$('[data-bdel]', cont).forEach(b => b.addEventListener('click', async () => {
+      if (await borrar('bolsa_tripulantes', b.dataset.bdel, '¿Quitar a esta persona de la bolsa?')) cfgBolsa();
+    }));
   }
 
   async function cfgTemporadas() {
