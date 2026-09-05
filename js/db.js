@@ -169,8 +169,54 @@
       return m;
     },
 
-    param: k => new URLSearchParams(location.search).get(k)
+    param: k => new URLSearchParams(location.search).get(k),
+
+    /**
+     * Agrega el "ojito" para ver/ocultar a cada campo de PIN de la página.
+     * Se aplica solo a los input[type=password], así que alcanza con llamarla una vez;
+     * si una pantalla dibuja campos nuevos después, puede volver a llamarla.
+     */
+    ojosPin(cont) {
+      const OJO = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" ' +
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+      const OJO_TACHADO = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" ' +
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M17.9 17.9A10.8 10.8 0 0 1 12 20c-7 0-11-8-11-8a19.8 19.8 0 0 1 5.1-5.9m3.2-1.7A10.9 10.9 0 0 1 12 4c7 0 11 8 11 8a19.6 19.6 0 0 1-2.3 3.4m-6.6-1.1a3 3 0 1 1-4.2-4.2"/>' +
+        '<line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+      U.$$('input[type=password]', cont).forEach(input => {
+        if (input.dataset.ojo) return;
+        input.dataset.ojo = '1';
+
+        const caja = document.createElement('span');
+        caja.className = 'con-ojo';
+        input.parentNode.insertBefore(caja, input);
+        caja.appendChild(input);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ojo';
+        btn.innerHTML = OJO;
+        btn.title = 'Mostrar';
+        btn.setAttribute('aria-label', 'Mostrar u ocultar el PIN');
+        btn.addEventListener('click', () => {
+          const mostrar = input.type === 'password';
+          input.type = mostrar ? 'text' : 'password';
+          btn.innerHTML = mostrar ? OJO_TACHADO : OJO;
+          btn.title = mostrar ? 'Ocultar' : 'Mostrar';
+          input.focus();
+        });
+        caja.appendChild(btn);
+      });
+    }
   };
 
   window.U = U;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => U.ojosPin());
+  } else {
+    U.ojosPin();
+  }
 })();

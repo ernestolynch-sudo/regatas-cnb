@@ -172,6 +172,18 @@ input[type=time], input[type=datetime-local], input[type=password], select, text
   width: 100%; padding: 9px 11px; border: 1px solid var(--gris-300); border-radius: 8px;
   font-family: inherit; font-size: 14px; background: #fff; color: var(--gris-900);
 }
+/* Campo de PIN con el "ojito" para ver/ocultar (ver U.ojosPin en js/db.js) */
+.con-ojo { position: relative; display: block; }
+.con-ojo input { padding-right: 44px; }
+.ojo {
+  position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: 0; padding: 6px; cursor: pointer;
+  color: var(--gris-500); border-radius: 6px;
+}
+.ojo:hover { color: var(--azul-700); background: var(--gris-100); }
+.con-ojo input:disabled + .ojo { display: none; }
+
 input[type=file] {
   width: 100%; padding: 7px 9px; border: 1px dashed var(--gris-300); border-radius: 8px;
   font-family: inherit; font-size: 13px; background: #fff; color: var(--gris-700);
