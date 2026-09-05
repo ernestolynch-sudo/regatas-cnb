@@ -47,15 +47,22 @@ Deno.serve(async (req) => {
     if (userErr || !userData?.user?.email) return json({ error: 'Sesión inválida.' }, 401);
     const emailQuienLlama = userData.user.email.toLowerCase();
 
-    // ---- 2. ¿Es admin? ---------------------------------------------------
+    // ---- 2. ¿Tiene permiso? ----------------------------------------------
+    // Crear usuarios del panel es sólo de admin. Regenerarle el PIN a un timonel
+    // (soloAcceso) también lo puede hacer quien gestiona inscripciones.
     const { data: quien } = await admin
       .from('usuarios_autorizados')
       .select('rol, activo')
       .ilike('email', emailQuienLlama)
       .maybeSingle();
 
-    if (!quien || !quien.activo || quien.rol !== 'admin') {
-      return json({ error: 'Sólo un administrador puede crear usuarios del panel.' }, 403);
+    const bodyPeek = await req.clone().json().catch(() => ({}));
+    const permitidos = bodyPeek?.soloAcceso === true
+      ? ['admin', 'comision', 'secretaria']
+      : ['admin'];
+
+    if (!quien || !quien.activo || !permitidos.includes(quien.rol)) {
+      return json({ error: 'No tenés permisos para esta operación.' }, 403);
     }
 
     // ---- 3. Validaciones -------------------------------------------------
@@ -64,10 +71,13 @@ Deno.serve(async (req) => {
     const nombre = String(body.nombre || '').trim();
     const rol = String(body.rol || '');
     const pin = String(body.pin || '').trim();
+    // soloAcceso: PIN para un timonel que quiere entrar a "Mi inscripción". Le damos la
+    // cuenta de acceso pero NO permisos del panel, así que no toca usuarios_autorizados.
+    const soloAcceso = body.soloAcceso === true;
 
     if (!email || !email.includes('@')) return json({ error: 'Ingresá un correo válido.' }, 400);
     if (!/^\d{6}$/.test(pin)) return json({ error: 'El PIN provisorio debe tener 6 dígitos.' }, 400);
-    if (!ROLES.includes(rol)) return json({ error: 'Rol inválido.' }, 400);
+    if (!soloAcceso && !ROLES.includes(rol)) return json({ error: 'Rol inválido.' }, 400);
 
     // ---- 4. Crear la cuenta (o resetear el PIN si ya existía) ------------
     const { data: lista, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
@@ -93,10 +103,14 @@ Deno.serve(async (req) => {
     }
 
     // ---- 5. Permisos dentro de la app -----------------------------------
-    const { error: upErr } = await admin
-      .from('usuarios_autorizados')
-      .upsert({ email, nombre: nombre || email, rol, activo: true }, { onConflict: 'email' });
-    if (upErr) return json({ error: upErr.message }, 500);
+    // Un timonel (soloAcceso) no va a la whitelist: sólo entra a "Mi inscripción",
+    // donde el RLS lo limita a las inscripciones de su propio correo.
+    if (!soloAcceso) {
+      const { error: upErr } = await admin
+        .from('usuarios_autorizados')
+        .upsert({ email, nombre: nombre || email, rol, activo: true }, { onConflict: 'email' });
+      if (upErr) return json({ error: upErr.message }, 500);
+    }
 
     return json({ ok: true, email, creado });
   } catch (e) {

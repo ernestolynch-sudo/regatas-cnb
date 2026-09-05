@@ -123,6 +123,14 @@
         <input type="checkbox" id="timonel_socio" checked>
         <label for="timonel_socio">Soy socio del Club Náutico Bariloche</label>
       </div>
+      <div class="field">
+        <label for="timonel_pin">PIN de acceso — 6 dígitos <span class="req">*</span></label>
+        <input type="password" id="timonel_pin" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+               placeholder="••••••" required autocomplete="new-password">
+        <div class="hint">Elegí un PIN y anotalo: con tu correo y este PIN vas a poder entrar a
+          <strong>Mi inscripción</strong> para consultar el estado o corregir tus datos, sin esperar ningún mail.
+          Si ya te inscribiste antes con este correo, seguí usando el PIN que elegiste esa vez.</div>
+      </div>
       <div class="grid g2">
         <div class="field">
           <label for="carnet_archivo">Foto del carnet de timonel (opcional)</label>

@@ -15,6 +15,7 @@
   document.addEventListener('DOMContentLoaded', async () => {
     U.$('#btnLogin').addEventListener('click', login);
     U.$('#email').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+    U.$('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
     db.auth.onAuthStateChange((_e, s) => { if (s) mostrarSesion(); });
     const { data } = await db.auth.getSession();
     if (data && data.session) mostrarSesion();
@@ -22,14 +23,13 @@
 
   async function login() {
     const email = U.$('#email').value.trim().toLowerCase();
-    if (!email) return;
-    U.aviso('#loginAviso', 'info', 'Enviando enlace…');
-    const { error } = await db.auth.signInWithOtp({
-      email, options: { emailRedirectTo: location.origin + location.pathname }
-    });
-    U.aviso('#loginAviso', error ? 'error' : 'ok',
-      error ? U.esc(U.err(error))
-            : 'Enlace enviado a <strong>' + U.esc(email) + '</strong>. Revisá tu correo (y la carpeta de spam).');
+    const pin = U.$('#pin').value.trim();
+    if (!email || !pin) return;
+    if (!/^\d{6}$/.test(pin)) { U.aviso('#loginAviso', 'error', 'El PIN tiene 6 dígitos.'); return; }
+    U.aviso('#loginAviso', 'info', 'Verificando…');
+    const { error } = await db.auth.signInWithPassword({ email, password: pin });
+    if (error) U.aviso('#loginAviso', 'error', U.esc(U.err(error)));
+    // Si anda, onAuthStateChange muestra la lista solo.
   }
 
   async function mostrarSesion() {

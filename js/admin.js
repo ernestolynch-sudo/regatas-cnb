@@ -763,7 +763,11 @@
           </div>`).join('')
         : '<p class="small muted">Guardá la inscripción para poder adjuntar documentos.</p>'}
       </fieldset>
-      <div class="field"><label>Motivo de rechazo (si corresponde)</label><input id="i_motivo_rechazo" value="${U.esc(i.motivo_rechazo || '')}"></div>`;
+      <div class="field"><label>Motivo de rechazo (si corresponde)</label><input id="i_motivo_rechazo" value="${U.esc(i.motivo_rechazo || '')}"></div>
+      ${i.id && i.timonel_email ? `<fieldset><legend>Acceso del timonel</legend>
+        <p class="small muted">Si el timonel olvidó su PIN de «Mi inscripción», generale uno nuevo y pasáselo.</p>
+        <button type="button" class="btn sec sm" id="i_pin_timonel">Generar PIN para ${U.esc(i.timonel_email)}</button>
+      </fieldset>` : ''}`;
 
     const botones = [{ txt: 'Cancelar', cls: 'ghost' }];
     if (i.id) botones.push({ txt: 'Eliminar', cls: 'danger', fn: async () => {
@@ -802,6 +806,16 @@
       const path = await subirDocInsc(i.id, campo, inp.dataset.nombre, file);
       if (path) { i[campo] = path; bg.remove(); fichaInsc(i); }
     }));
+
+    const btnPin = U.$('#i_pin_timonel', bg);
+    if (btnPin) btnPin.addEventListener('click', async () => {
+      const pin = pinProvisorio();
+      btnPin.disabled = true; btnPin.textContent = 'Generando…';
+      const res = await asignarPin({ email: i.timonel_email, pin, soloAcceso: true });
+      btnPin.disabled = false; btnPin.textContent = 'Generar PIN para ' + i.timonel_email;
+      if (res.error) { alert('No se pudo generar el PIN: ' + res.error); return; }
+      mostrarPin(i.timonel_email, pin, res.creado);
+    });
   }
 
   function exportarInsc() {
@@ -1459,33 +1473,45 @@ Organiza: Comisión de Vela y Motor del CNB. Regata conforme al RRV ${D.RRV_CICL
         };
         if (!/^\d{6}$/.test(datos.pin)) { alert('El PIN provisorio debe tener 6 dígitos.'); return false; }
 
-        const { data: r, error } = await db.functions.invoke('crear-usuario-panel', { body: datos });
-        // Ante un status no-2xx, supabase-js deja un mensaje genérico en error.message y el
-        // motivo real en el cuerpo de la respuesta (error.context): lo leemos para mostrarlo.
-        let detalle = (r && r.error) || null;
-        if (!detalle && error) {
-          detalle = error.message;
-          try {
-            const cuerpo = await error.context.json();
-            if (cuerpo && cuerpo.error) detalle = cuerpo.error;
-          } catch (_) { /* la respuesta no era JSON: queda el mensaje genérico */ }
-          // Si ni siquiera se pudo llegar a la función, lo más probable es que falte
-          // desplegarla en Supabase — decirlo explícitamente ahorra media hora de búsqueda.
-          if (/failed to send a request|fetch/i.test(detalle || '')) {
-            detalle = 'no se pudo contactar la función «crear-usuario-panel». Verificá que esté ' +
-              'desplegada en Supabase → Edge Functions con ese nombre exacto.';
-          }
-        }
-        if (detalle) { alert('No se pudo crear el usuario: ' + detalle); return false; }
+        const res = await asignarPin(datos);
+        if (res.error) { alert('No se pudo crear el usuario: ' + res.error); return false; }
 
         cfgUsuarios();
-        modal('Usuario listo', `
-          <p>Cuenta de <strong>${U.esc(datos.email)}</strong> ${r.creado ? 'creada' : 'actualizada'}.</p>
-          <p>PIN provisorio:</p>
-          <p class="mono center" style="font-size:30px;font-weight:700;letter-spacing:5px;color:var(--azul-700)">${U.esc(datos.pin)}</p>
-          <p class="small muted">Pasáselo a la persona por el medio que uses habitualmente. Al entrar puede
-            cambiarlo desde «¿Todavía no tenés PIN o lo olvidaste?».</p>`,
-          [{ txt: 'Listo' }]);
+        mostrarPin(datos.email, datos.pin, res.creado);
       } }]);
+  }
+
+  /**
+   * Crea la cuenta de acceso (o le pone un PIN nuevo si ya existía) vía Edge Function,
+   * que es donde vive la service_role. Devuelve { creado } o { error } ya legible.
+   */
+  async function asignarPin(datos) {
+    const { data: r, error } = await db.functions.invoke('crear-usuario-panel', { body: datos });
+    // Ante un status no-2xx, supabase-js deja un mensaje genérico en error.message y el
+    // motivo real en el cuerpo de la respuesta (error.context): lo leemos para mostrarlo.
+    let detalle = (r && r.error) || null;
+    if (!detalle && error) {
+      detalle = error.message;
+      try {
+        const cuerpo = await error.context.json();
+        if (cuerpo && cuerpo.error) detalle = cuerpo.error;
+      } catch (_) { /* la respuesta no era JSON: queda el mensaje genérico */ }
+      // Si ni siquiera se pudo llegar a la función, lo más probable es que falte
+      // desplegarla en Supabase — decirlo explícitamente ahorra media hora de búsqueda.
+      if (/failed to send a request|fetch/i.test(detalle || '')) {
+        detalle = 'no se pudo contactar la función «crear-usuario-panel». Verificá que esté ' +
+          'desplegada en Supabase → Edge Functions con ese nombre exacto.';
+      }
+    }
+    return detalle ? { error: detalle } : { creado: !!(r && r.creado) };
+  }
+
+  function mostrarPin(email, pin, creado) {
+    modal('PIN listo', `
+      <p>Cuenta de <strong>${U.esc(email)}</strong> ${creado ? 'creada' : 'actualizada'}.</p>
+      <p>PIN:</p>
+      <p class="mono center" style="font-size:30px;font-weight:700;letter-spacing:5px;color:var(--azul-700)">${U.esc(pin)}</p>
+      <p class="small muted">Pasáselo a la persona por el medio que uses habitualmente.</p>`,
+      [{ txt: 'Listo' }]);
   }
 })();

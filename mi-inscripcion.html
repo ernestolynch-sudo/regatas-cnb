@@ -32,15 +32,21 @@
 
   <!-- ================= LOGIN ================= -->
   <div id="login" class="card">
-    <h2 class="mt0">Ingresá tu correo</h2>
-    <p class="muted small">Te enviamos un enlace de acceso (<em>magic link</em>). Usá el mismo correo con el
-      que te inscribiste (el del timonel) — sólo vas a poder ver las inscripciones asociadas a ese email.</p>
+    <h2 class="mt0">Ingresá con tu correo y PIN</h2>
+    <p class="muted small">Usá el mismo correo con el que te inscribiste (el del timonel) y el PIN de 6 dígitos
+      que elegiste al inscribirte. Sólo vas a ver las inscripciones asociadas a ese correo.</p>
     <div id="loginAviso"></div>
     <div class="field">
       <label for="email">Correo electrónico</label>
       <input type="email" id="email" placeholder="nombre@dominio.com">
     </div>
-    <button class="btn block" id="btnLogin">Enviar enlace de acceso</button>
+    <div class="field">
+      <label for="pin">PIN (6 dígitos)</label>
+      <input type="password" id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••">
+    </div>
+    <button class="btn block" id="btnLogin">Ingresar</button>
+    <p class="small muted" style="margin:12px 0 0">¿Olvidaste tu PIN, o te inscribiste antes de que existiera?
+      Escribile a la Comisión de Vela y Motor y te generan uno nuevo en el momento.</p>
   </div>
 
   <!-- ================= LISTA ================= -->

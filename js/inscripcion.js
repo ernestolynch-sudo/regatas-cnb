@@ -181,6 +181,10 @@
       U.aviso('#avisos', 'error', 'Adjuntá la constancia de seguro: es obligatoria para solicitar amarra de cortesía o el ingreso al fondeadero.');
       return;
     }
+    if (!/^\d{6}$/.test(U.$('#timonel_pin').value.trim())) {
+      U.aviso('#avisos', 'error', 'Elegí un PIN de acceso de 6 dígitos: es el que vas a usar para entrar a «Mi inscripción».');
+      return;
+    }
 
     btn.disabled = true; btn.textContent = 'Enviando…';
 
@@ -248,9 +252,29 @@
 
     const { data, error } = await db.rpc('crear_inscripcion_publica', { p: reg }).single();
 
-    btn.disabled = false; btn.textContent = 'Enviar inscripción';
+    if (error) {
+      btn.disabled = false; btn.textContent = 'Enviar inscripción';
+      U.aviso('#avisos', 'error', U.esc(U.err(error))); return;
+    }
 
-    if (error) { U.aviso('#avisos', 'error', U.esc(U.err(error))); return; }
+    // Cuenta de acceso a "Mi inscripción" con el PIN elegido. Si ya existía una cuenta con
+    // ese correo, Supabase no la toca: el PIN anterior sigue valiendo, y eso es lo que
+    // queremos — nadie puede pisar el PIN de otro escribiendo su email.
+    // 'ok' = quedó el PIN nuevo · 'existia' = sigue el anterior · 'falla' = hay que pedirlo a la Comisión.
+    let estadoPin = 'ok';
+    try {
+      const { data: alta, error: errAlta } = await db.auth.signUp({
+        email: reg.timonel_email, password: U.$('#timonel_pin').value.trim()
+      });
+      if (errAlta) {
+        estadoPin = /already registered|already exists/i.test(errAlta.message || '') ? 'existia' : 'falla';
+      } else if (!(alta && alta.session)) {
+        // Sin sesión y sin error: correo ya registrado (Supabase lo disimula para no revelarlo).
+        estadoPin = 'existia';
+      }
+    } catch (_) { estadoPin = 'falla'; }
+
+    btn.disabled = false; btn.textContent = 'Enviar inscripción';
 
     U.$('#frm').style.display = 'none';
     U.$('#avisos').innerHTML = '';
@@ -270,9 +294,19 @@
             <li>Presentate en la reunión de timoneles${E.evento.hora_briefing ? ' a las ' + U.hora(E.evento.hora_briefing) + ' h' : ''}
                 con DNI, constancia de seguro${reg.autoriza_menor ? ' y la autorización del responsable legal' : ''}.</li>
             <li>Podés consultar o corregir tus datos en cualquier momento desde
-                <a href="mi-inscripcion.html">Mi inscripción</a>, con este mismo correo.</li>
+                <a href="mi-inscripcion.html">Mi inscripción</a>, entrando con
+                <strong>${U.esc(reg.timonel_email)}</strong> y ${estadoPin === 'existia'
+                  ? 'el PIN que ya habías elegido en una inscripción anterior con este correo'
+                  : 'el PIN que acabás de elegir'}.</li>
           </ol>
         </div>
+        ${estadoPin === 'existia' ? `<div class="alert warn" style="text-align:left">
+          Este correo ya tenía un PIN de una inscripción anterior, así que <strong>se mantuvo el
+          anterior</strong> y no se aplicó el que cargaste recién. Si no lo recordás, escribinos y
+          la Comisión te genera uno nuevo.</div>` : ''}
+        ${estadoPin === 'falla' ? `<div class="alert warn" style="text-align:left">
+          Tu inscripción quedó registrada, pero no pudimos dejar activo tu PIN de acceso.
+          Escribile a la Comisión y te lo generan en el momento.</div>` : ''}
         <div class="row center" style="justify-content:center;margin-top:14px">
           <a class="btn sec" href="index.html?evento=${E.evento.id}">Ver el evento</a>
           <a class="btn" href="inscripcion.html?evento=${E.evento.id}">Inscribir otro barco</a>
