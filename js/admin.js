@@ -1368,7 +1368,10 @@ Organiza: Comisión de Vela y Motor del CNB. Regata conforme al RRV ${D.RRV_CICL
             <td>${puedeEditar
               ? `<input type="checkbox" data-bd="${t.id}" ${t.disponible ? 'checked' : ''}>`
               : (t.disponible ? 'Sí' : 'No')}</td>
-            <td class="right">${puedeEditar ? `<button class="btn ghost sm" data-bdel="${t.id}">✕</button>` : ''}</td>
+            <td class="right">${puedeEditar
+              ? `<button class="btn ghost sm" data-bedit="${t.id}">Editar</button>
+                 <button class="btn ghost sm" data-bdel="${t.id}">✕</button>`
+              : ''}</td>
           </tr>`;
         }).join('')}</tbody></table></div>`
         : '<p class="muted" style="margin-top:12px">Todavía no se anotó nadie en la bolsa.</p>'}
@@ -1383,15 +1386,80 @@ Organiza: Comisión de Vela y Motor del CNB. Regata conforme al RRV ${D.RRV_CICL
       { titulo: 'Nacimiento', valor: 'nacimiento' },
       { titulo: 'Email', valor: 'email' }, { titulo: 'Celular', valor: 'celular' },
       { titulo: 'Posición', valor: 'posicion' }, { titulo: 'Experiencia', valor: 'experiencia' },
-      { titulo: 'Disponible', valor: t => t.disponible ? 'SI' : 'NO' }
+      { titulo: 'Disponible', valor: t => t.disponible ? 'SI' : 'NO' },
+      { titulo: 'Notas', valor: 'notas' }
     ]), 'text/csv'));
 
     if (!puedeEditar) return;
     U.$$('[data-bd]', cont).forEach(c => c.addEventListener('change', () =>
       guardar('bolsa_tripulantes', { id: c.dataset.bd, disponible: c.checked })));
+    U.$$('[data-bedit]', cont).forEach(b => b.addEventListener('click', () =>
+      fichaBolsa(lista.find(t => t.id === b.dataset.bedit))));
     U.$$('[data-bdel]', cont).forEach(b => b.addEventListener('click', async () => {
       if (await borrar('bolsa_tripulantes', b.dataset.bdel, '¿Quitar a esta persona de la bolsa?')) cfgBolsa();
     }));
+  }
+
+  const POSICIONES_BOLSA = ['Proa', 'Mástil', 'Pit', 'Trimmer', 'Grinder',
+    'Táctico / navegante', 'Timonel', 'Sin preferencia / lo que haga falta'];
+
+  function fichaBolsa(t) {
+    if (!t) return;
+    const edad = edadAnios(t.nacimiento);
+    const html = `
+      <div class="grid g2">
+        <div class="field"><label>Nombre</label><input id="b_nombre" value="${U.esc(t.nombre || '')}"></div>
+        <div class="field"><label>Apellido</label><input id="b_apellido" value="${U.esc(t.apellido || '')}"></div>
+      </div>
+      <div class="grid g2">
+        <div class="field"><label>Email</label><input type="email" id="b_email" value="${U.esc(t.email || '')}"></div>
+        <div class="field"><label>Celular</label><input id="b_celular" value="${U.esc(t.celular || '')}"></div>
+      </div>
+      <div class="grid g2">
+        <div class="field"><label>Fecha de nacimiento</label>
+          <input type="date" id="b_nacimiento" value="${U.esc(t.nacimiento || '')}">
+          <div class="hint">${edad !== null ? edad + ' años' + (edad < 18 ? ' — menor de edad' : '') : ''}</div></div>
+        <div class="field"><label>Posición sugerida</label>
+          <select id="b_posicion">
+            <option value="">— sin especificar —</option>
+            ${POSICIONES_BOLSA.map(p => `<option ${t.posicion === p ? 'selected' : ''}>${p}</option>`).join('')}
+          </select></div>
+      </div>
+      <div class="field"><label>Experiencia</label>
+        <textarea id="b_experiencia">${U.esc(t.experiencia || '')}</textarea></div>
+      <div class="field"><label>Notas internas de la Comisión</label>
+        <textarea id="b_notas">${U.esc(t.notas || '')}</textarea>
+        <div class="hint">Sólo se ven acá: no se publican en la página pública.</div></div>
+      <div class="check">
+        <input type="checkbox" id="b_disponible" ${t.disponible ? 'checked' : ''}>
+        <label for="b_disponible">Disponible — figura en la lista pública</label>
+      </div>`;
+
+    modal('Tripulante — ' + (t.nombre || '') + ' ' + (t.apellido || ''), html, [
+      { txt: 'Cancelar', cls: 'ghost' },
+      { txt: 'Eliminar', cls: 'danger', fn: async () => {
+        if (await borrar('bolsa_tripulantes', t.id, '¿Quitar a esta persona de la bolsa?')) cfgBolsa();
+        else return false;
+      } },
+      { txt: 'Guardar', fn: async bg => {
+        const g = id => U.$('#b_' + id, bg).value.trim();
+        if (!g('nombre') || !g('apellido') || !g('email') || !g('celular') || !g('nacimiento')) {
+          alert('Nombre, apellido, email, celular y fecha de nacimiento son obligatorios.');
+          return false;
+        }
+        await guardar('bolsa_tripulantes', {
+          id: t.id,
+          nombre: g('nombre'), apellido: g('apellido'),
+          email: g('email').toLowerCase(), celular: g('celular'),
+          nacimiento: g('nacimiento'),
+          posicion: g('posicion') || null,
+          experiencia: g('experiencia') || null,
+          notas: g('notas') || null,
+          disponible: U.$('#b_disponible', bg).checked
+        });
+        cfgBolsa();
+      } }
+    ]);
   }
 
   async function cfgTemporadas() {
