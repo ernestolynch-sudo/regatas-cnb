@@ -50,9 +50,19 @@
       U.descargar('regatas-cnb-' + (t ? t.nombre : 'calendario') + '.ics',
         U.ics(estado.eventos, 'Regatas CNB ' + (t ? t.nombre : '')), 'text/calendar');
     });
+    U.$('#btnFiltros').addEventListener('click', () => {
+      const abierto = U.$('#filtros').classList.toggle('abierto');
+      U.$('#btnFiltros').setAttribute('aria-expanded', abierto ? 'true' : 'false');
+      U.$('#btnFiltros').textContent = abierto ? 'Ocultar filtros' : 'Filtrar y buscar';
+    });
     U.$('#navResultados').addEventListener('click', e => {
       e.preventDefault();
-      U.$('#fEstado').value = 'finalizado'; cargarEventos();
+      // Si el usuario llega por «Resultados» desde el celular, que vea el filtro aplicado.
+      U.$('#fEstado').value = 'finalizado';
+      U.$('#filtros').classList.add('abierto');
+      U.$('#btnFiltros').setAttribute('aria-expanded', 'true');
+      U.$('#btnFiltros').textContent = 'Ocultar filtros';
+      cargarEventos();
     });
 
     await cargarEventos();
@@ -248,16 +258,22 @@
   // --- Aviso / Instrucciones ----------------------------------------------
   async function tabDoc(tipo) {
     const e = estado.evento;
-    const { data } = await db.from('documentos_regata').select('*')
+    const { data, error } = await db.from('documentos_regata').select('*')
       .eq('evento_id', e.id).eq('tipo', tipo).eq('publicado', true)
       .order('version', { ascending: false }).limit(1);
 
     const doc = (data || [])[0];
     const p = U.$('#panelDetalle');
 
+    if (error) {
+      p.innerHTML = '<div class="alert error">No se pudo cargar el documento: ' + U.esc(U.err(error)) +
+        '</div>';
+      return;
+    }
     if (!doc) {
-      p.innerHTML = `<div class="alert info">Todavía no se publicó ${tipo === 'aviso'
-        ? 'el Aviso de Regata' : 'las Instrucciones de Regata'} de este evento.</div>`;
+      p.innerHTML = `<div class="alert info">${tipo === 'aviso'
+        ? 'Todavía no se publicó el Aviso de Regata'
+        : 'Todavía no se publicaron las Instrucciones de Regata'} de este evento.</div>`;
       return;
     }
 

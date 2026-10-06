@@ -163,6 +163,8 @@
       if (/invalid login credentials/i.test(m)) return 'Correo o PIN incorrecto.';
       if (/password should be at least/i.test(m))
         return 'El PIN es muy corto para la configuración actual de Supabase (mínimo 6 dígitos).';
+      if (/duplicate key/i.test(m) && /bolsa/i.test(m))
+        return 'Ya hay una persona anotada en la bolsa con ese correo. Si sos vos y querés cambiar tus datos, escribile a la Comisión.';
       if (/duplicate key/i.test(m) && /num_vela/i.test(m))
         return 'Ya existe una inscripción con ese número de vela en esta clase para este evento.';
       if (/duplicate key/i.test(m)) return 'Ya existe un registro con esos datos (clave duplicada).';

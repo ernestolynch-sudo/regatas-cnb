@@ -277,7 +277,21 @@ table.t tr.podio3 td { background: #fdf1e7; }
 .x { background: none; border: none; font-size: 24px; line-height: 1; cursor: pointer; color: var(--gris-500); padding: 0 4px; }
 
 /* ---------- Tabs ---------- */
-.tabs { display: flex; gap: 3px; border-bottom: 2px solid var(--gris-300); margin-bottom: 16px; overflow-x: auto; }
+.tabs {
+  display: flex; gap: 3px; border-bottom: 2px solid var(--gris-300);
+  margin-bottom: 16px; overflow-x: auto; scrollbar-width: none;
+  /* Sombra en el borde que aparece sólo cuando quedan pestañas fuera de pantalla. Sin esto,
+     en el celular nadie descubre que existen «Inscriptos» y «Resultados». */
+  background:
+    linear-gradient(to right, var(--gris-050) 40%, rgba(247,249,251,0)) left center,
+    linear-gradient(to left,  var(--gris-050) 40%, rgba(247,249,251,0)) right center,
+    radial-gradient(farthest-side at 0 50%, rgba(7,42,63,.18), rgba(7,42,63,0)) left center,
+    radial-gradient(farthest-side at 100% 50%, rgba(7,42,63,.18), rgba(7,42,63,0)) right center;
+  background-repeat: no-repeat;
+  background-size: 36px 100%, 36px 100%, 13px 100%, 13px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+.tabs::-webkit-scrollbar { display: none; }
 .tabs button {
   background: none; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px;
   padding: 9px 15px; font-size: 14px; font-weight: 600; color: var(--gris-500);
@@ -304,9 +318,21 @@ table.t tr.podio3 td { background: #fdf1e7; }
 }
 
 /* ---------- Responsive ---------- */
+.solo-movil { display: none; }
+
 @media (max-width: 640px) {
   .topbar img { height: 48px; width: 48px; }
   .hero h1 { font-size: 22px; }
+  .solo-movil { display: inline-flex; }
+  /* Filtros plegables: ver el comentario en index.html */
+  .filtros { display: none; }
+  .filtros.abierto { display: flex; margin-top: 12px; }
+  .filtros > div[style] { min-width: 100% !important; }
+  /* Las tarjetas de totales apiladas ocupaban una pantalla entera cada una */
+  .grid.g4 { grid-template-columns: 1fr 1fr; }
+  .kpi { padding: 10px; }
+  .kpi .v { font-size: 22px; }
+  .kpi .l { font-size: 10px; letter-spacing: .4px; }
   .evento { flex-direction: column; }
   .evento .acciones { flex-direction: row; width: 100%; }
   .doc-regata { padding: 20px; }

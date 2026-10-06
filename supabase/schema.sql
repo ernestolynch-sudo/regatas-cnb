@@ -778,6 +778,11 @@ create table if not exists public.bolsa_tripulantes (
 
 create index if not exists idx_bolsa_disponible on public.bolsa_tripulantes(disponible);
 
+-- Nadie puede figurar dos veces al mismo tiempo. Es parcial a propósito: si la Comisión
+-- lo da de baja porque consiguió barco, más adelante puede volver a anotarse.
+create unique index if not exists idx_bolsa_email_activo
+  on public.bolsa_tripulantes (lower(email)) where disponible;
+
 drop trigger if exists trg_updated_bolsa on public.bolsa_tripulantes;
 create trigger trg_updated_bolsa before update on public.bolsa_tripulantes
   for each row execute function public.set_updated_at();

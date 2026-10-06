@@ -35,7 +35,12 @@
 
   <div class="wrap" style="margin-top:-18px">
     <div class="card">
-      <div class="row">
+      <!-- En el celular los filtros arrancan plegados: desplegados ocupan toda la pantalla
+           y empujan las regatas abajo del todo. En escritorio se ven siempre. -->
+      <button class="btn sec block solo-movil" id="btnFiltros" aria-expanded="false" aria-controls="filtros">
+        Filtrar y buscar
+      </button>
+      <div class="row filtros" id="filtros">
         <div style="min-width:170px">
           <label for="fTemporada">Temporada</label>
           <select id="fTemporada"></select>

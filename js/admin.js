@@ -24,23 +24,35 @@
 
   const TABS_EV = { clases: ROL_COMISION, docs: ROL_COMISION, insc: ROL_SECRETARIA,
                      pruebas: ROL_OFICIAL, org: ROL_COMISION, difusion: null };
+  const TABS_CFG = { temporadas: ROL_COMISION, clases: ROL_COMISION,
+                      bolsa: ROL_SECRETARIA, usuarios: ROL_ADMIN };
+  // Quién ve la sección Configuración: cualquiera que tenga al menos una de sus pestañas.
+  const TABS_CFG_VISIBLES = [...new Set(Object.values(TABS_CFG).flat())];
 
   /** Muestra/oculta según el rol los controles que disparan escrituras restringidas por RLS. */
   function aplicarPermisosUI() {
     U.$('#btnNuevoEvento').style.display = puede(ROL_COMISION) ? '' : 'none';
     U.$('#btnEditarEvento').style.display = puede(ROL_COMISION) ? '' : 'none';
     U.$('#selEstado').style.display = puede(ROL_COMISION) ? '' : 'none';
+    // Secretaría entra a Configuración sólo por la bolsa de tripulantes: es quien contacta
+    // a la gente que se ofrece, así que necesita verla.
     const navConfig = U.$('#nav a[data-v="config"]');
-    if (navConfig) navConfig.style.display = puede(ROL_COMISION) ? '' : 'none';
+    if (navConfig) navConfig.style.display = puede(TABS_CFG_VISIBLES) ? '' : 'none';
     Object.keys(TABS_EV).forEach(t => {
       const btn = U.$('#tabsEv button[data-t="' + t + '"]');
       if (btn) btn.style.display = puede(TABS_EV[t]) ? '' : 'none';
     });
-    const btnUsuarios = U.$('#tabsCfg button[data-t="usuarios"]');
-    if (btnUsuarios) btnUsuarios.style.display = puede(ROL_ADMIN) ? '' : 'none';
+    Object.keys(TABS_CFG).forEach(t => {
+      const btn = U.$('#tabsCfg button[data-t="' + t + '"]');
+      if (btn) btn.style.display = puede(TABS_CFG[t]) ? '' : 'none';
+    });
     if (!puede(TABS_EV[st.tabEv])) {
       st.tabEv = Object.keys(TABS_EV).find(t => puede(TABS_EV[t])) || 'difusion';
       U.$$('#tabsEv button').forEach(b => b.classList.toggle('on', b.dataset.t === st.tabEv));
+    }
+    if (!puede(TABS_CFG[st.tabCfg])) {
+      st.tabCfg = Object.keys(TABS_CFG).find(t => puede(TABS_CFG[t])) || 'bolsa';
+      U.$$('#tabsCfg button').forEach(b => b.classList.toggle('on', b.dataset.t === st.tabCfg));
     }
   }
 
@@ -221,6 +233,21 @@
     const { error } = await db.from(tabla).delete().eq('id', id);
     if (error) { alert('Error: ' + U.err(error)); return false; }
     return true;
+  }
+
+  /**
+   * Guarda el estado de un tilde y lo revierte si la base lo rechaza: de lo contrario la
+   * pantalla queda mostrando algo distinto de lo que realmente quedó guardado.
+   */
+  async function tildeGuardado(chk, tabla, campo, clave) {
+    chk.disabled = true;
+    try {
+      await guardar(tabla, { id: chk.dataset[clave || 'bd'], [campo]: chk.checked });
+    } catch (_) {
+      chk.checked = !chk.checked;
+    } finally {
+      chk.disabled = false;
+    }
   }
 
   // =========================================================================
@@ -419,7 +446,10 @@
     st.insc = ins.data || [];
     st.pruebas = pr.data || [];
     if (st.pruebas.length) {
-      const { data } = await db.from('resultados').select('*').in('prueba_id', st.pruebas.map(p => p.id));
+      const { data, error } = await db.from('resultados').select('*').in('prueba_id', st.pruebas.map(p => p.id));
+      // Sin esto, un fallo de red o de permisos se vería como «ninguna llegada cargada»,
+      // que es justo lo contrario de lo que pasó.
+      if (error) alert('No se pudieron cargar los resultados: ' + U.err(error));
       st.resultados = data || [];
     } else st.resultados = [];
   }
@@ -511,8 +541,9 @@
   // ------------------------------------------------- AVISO / INSTRUCCIONES
   async function tabDocs() {
     const p = U.$('#panelEv');
-    const { data } = await db.from('documentos_regata').select('*')
+    const { data, error } = await db.from('documentos_regata').select('*')
       .eq('evento_id', st.ev.id).order('tipo').order('version', { ascending: false });
+    if (error) { p.innerHTML = '<div class="alert error">' + U.esc(U.err(error)) + '</div>'; return; }
     const docs = data || [];
 
     p.innerHTML = ['aviso', 'instrucciones'].map(tipo => {
@@ -722,9 +753,20 @@
       const pend = st.insc.filter(i => i.estado === 'pendiente');
       if (!pend.length) { alert('No hay inscripciones pendientes.'); return; }
       if (!confirm('¿Confirmar las ' + pend.length + ' inscripciones pendientes?')) return;
-      for (const i of pend) await guardar('inscripciones', { id: i.id, estado: 'confirmada',
-        revisado_por: st.usuario.email, revisado_at: new Date().toISOString() });
-      await refrescarEvento(); tabInsc();
+      // Si una falla a mitad de camino, las anteriores ya quedaron confirmadas: hay que
+      // refrescar igual para que la pantalla no siga mostrándolas como pendientes.
+      let hechas = 0;
+      try {
+        for (const i of pend) {
+          await guardar('inscripciones', { id: i.id, estado: 'confirmada',
+            revisado_por: st.usuario.email, revisado_at: new Date().toISOString() });
+          hechas++;
+        }
+      } catch (_) {
+        alert('Se confirmaron ' + hechas + ' de ' + pend.length + '. Revisá las que quedaron pendientes.');
+      } finally {
+        await refrescarEvento(); tabInsc();
+      }
     });
   }
 
@@ -978,7 +1020,7 @@
             <td>${U.hora(x.hora_largada)}</td>
             <td style="white-space:normal">${U.esc(x.recorrido || '—')}</td>
             <td class="num">${x.distancia_mn ?? '—'}</td>
-            <td>${x.viento_dir || ''} ${x.viento_nudos ? x.viento_nudos + ' kt' : ''}</td>
+            <td>${U.esc(x.viento_dir || '')} ${x.viento_nudos ? x.viento_nudos + ' kt' : ''}</td>
             <td><span class="chip ${x.estado === 'valida' ? 'verde' : x.estado === 'anulada' ? 'rojo' : 'naranja'}">${x.estado}</span></td>
             <td class="num">${n}</td>
             <td class="right">
@@ -1230,7 +1272,9 @@
 
   async function tabOrg() {
     const p = U.$('#panelEv');
-    const { data } = await db.from('tareas_evento').select('*').eq('evento_id', st.ev.id).order('orden').order('created_at');
+    const { data, error } = await db.from('tareas_evento').select('*')
+      .eq('evento_id', st.ev.id).order('orden').order('created_at');
+    if (error) { p.innerHTML = '<div class="alert error">' + U.esc(U.err(error)) + '</div>'; return; }
     const tareas = data || [];
     const bloques = [...new Set(tareas.map(t => t.bloque))];
     const hechas = tareas.filter(t => t.hecho).length;
@@ -1436,7 +1480,7 @@ Organiza: Comisión de Vela y Motor del CNB. Regata conforme al RRV ${D.RRV_CICL
 
     if (!puedeEditar) return;
     U.$$('[data-bd]', cont).forEach(c => c.addEventListener('change', () =>
-      guardar('bolsa_tripulantes', { id: c.dataset.bd, disponible: c.checked })));
+      tildeGuardado(c, 'bolsa_tripulantes', 'disponible')));
     U.$$('[data-bedit]', cont).forEach(b => b.addEventListener('click', () =>
       fichaBolsa(lista.find(t => t.id === b.dataset.bedit))));
     U.$$('[data-bdel]', cont).forEach(b => b.addEventListener('click', async () => {
@@ -1577,7 +1621,7 @@ Organiza: Comisión de Vela y Motor del CNB. Regata conforme al RRV ${D.RRV_CICL
       } }]));
 
     U.$$('[data-ca]').forEach(c => c.addEventListener('change', () =>
-      guardar('clases', { id: c.dataset.ca, activa: c.checked })));
+      tildeGuardado(c, 'clases', 'activa', 'ca')));
     U.$$('[data-cdel]').forEach(b => b.addEventListener('click', async () => {
       if (await borrar('clases', b.dataset.cdel, '¿Eliminar la clase?')) cfgClases();
     }));
@@ -1609,7 +1653,7 @@ Organiza: Comisión de Vela y Motor del CNB. Regata conforme al RRV ${D.RRV_CICL
     U.$$('[data-upin]').forEach(b => b.addEventListener('click', () =>
       formUsuario({ email: b.dataset.upin, nombre: b.dataset.unom, rol: b.dataset.urol })));
     U.$$('[data-ua]').forEach(c => c.addEventListener('change', () =>
-      guardar('usuarios_autorizados', { id: c.dataset.ua, activo: c.checked })));
+      tildeGuardado(c, 'usuarios_autorizados', 'activo', 'ua')));
     U.$$('[data-udel]').forEach(b => b.addEventListener('click', async () => {
       if (await borrar('usuarios_autorizados', b.dataset.udel, '¿Quitar el acceso de este usuario?')) cfgUsuarios();
     }));
