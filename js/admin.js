@@ -524,28 +524,44 @@
           <span class="chip">Apéndice ${tipo === 'aviso' ? 'J1' : 'J2'} · RRV ${D.RRV_CICLO}</span>
           <div class="spacer"></div>
           <button class="btn sec sm" data-prev="${tipo}">Previsualizar</button>
+          <button class="btn sec sm" data-subir="${tipo}">↑ Subir Word o PDF</button>
+          <input type="file" data-archivo="${tipo}" style="display:none"
+                 accept=".pdf,.doc,.docx,.odt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
           <button class="btn sm" data-gen="${tipo}">Generar nueva versión</button>
         </div>
         ${propios.length ? `<div class="tabla-wrap" style="margin-top:12px"><table class="t">
-          <thead><tr><th class="num">Ver.</th><th>Título</th><th>Publicado</th><th>Fecha</th><th></th></tr></thead>
+          <thead><tr><th class="num">Ver.</th><th>Título</th><th>Origen</th><th>Publicado</th><th>Fecha</th><th></th></tr></thead>
           <tbody>${propios.map(d => `<tr>
             <td class="num">${d.version}</td>
             <td>${U.esc(d.titulo)}</td>
+            <td>${d.url_archivo
+              ? `<a class="chip azul" href="${U.esc(d.url_archivo)}" target="_blank" rel="noopener">Archivo subido</a>`
+              : '<span class="chip">Generado</span>'}</td>
             <td>${d.publicado ? '<span class="chip verde">Publicado</span>' : '<span class="chip">Borrador</span>'}</td>
             <td>${d.fecha_publicacion ? U.fechaCorta(d.fecha_publicacion) : '—'}</td>
             <td class="right">
-              <button class="btn ghost sm" data-ver="${d.id}">Ver</button>
-              <button class="btn ghost sm" data-edit="${d.id}">Editar</button>
+              ${d.url_archivo ? '' : `<button class="btn ghost sm" data-ver="${d.id}">Ver</button>
+              <button class="btn ghost sm" data-edit="${d.id}">Editar</button>`}
               <button class="btn ${d.publicado ? 'ghost' : 'ok'} sm" data-pub="${d.id}">${d.publicado ? 'Despublicar' : 'Publicar'}</button>
               <button class="btn ghost sm" data-del="${d.id}">✕</button>
             </td></tr>`).join('')}</tbody></table></div>`
           : `<p class="muted" style="margin-top:12px">Todavía no hay ${nombre.toLowerCase()} para este evento.
              «Generar nueva versión» crea el texto completo conforme al Apéndice J del RRV, con los datos del
              evento y las particularidades del Nahuel Huapi ya cargados. Después lo podés editar sección por sección.</p>`}
+        <p class="small muted" style="margin-top:11px">Si preferís redactarlo por fuera, subí el Word o el PDF:
+          se publica tal cual y queda visible para todos en la ficha pública del evento. Hay que
+          <strong>Publicar</strong> la versión para que se vea.</p>
       </div>`;
     }).join('');
 
     U.$$('[data-gen]', p).forEach(b => b.addEventListener('click', () => generarDoc(b.dataset.gen, docs)));
+    U.$$('[data-subir]', p).forEach(b => b.addEventListener('click', () =>
+      U.$('[data-archivo="' + b.dataset.subir + '"]', p).click()));
+    U.$$('[data-archivo]', p).forEach(inp => inp.addEventListener('change', async () => {
+      const file = inp.files[0];
+      if (file) await subirDocRegata(inp.dataset.archivo, file, docs);
+      inp.value = '';
+    }));
     U.$$('[data-prev]', p).forEach(b => b.addEventListener('click', () => previsualizar(b.dataset.prev)));
     U.$$('[data-ver]', p).forEach(b => b.addEventListener('click', () => verDoc(docs.find(d => d.id === b.dataset.ver))));
     U.$$('[data-edit]', p).forEach(b => b.addEventListener('click', () => editarDoc(docs.find(d => d.id === b.dataset.edit))));
@@ -585,6 +601,42 @@
       publicado: false, creado_por: st.usuario.email
     });
     tabDocs();
+  }
+
+  /**
+   * Publica un Aviso/Instrucciones redactado por fuera (Word o PDF). Crea una versión más
+   * del documento, igual que «Generar nueva versión», pero apuntando al archivo subido.
+   * El bucket es de lectura pública: el link sirve para cualquiera, sin cuenta.
+   */
+  async function subirDocRegata(tipo, file, docs) {
+    const MAX = 20 * 1024 * 1024;
+    if (file.size > MAX) { alert('El archivo pesa más de 20 MB.'); return; }
+
+    const nombre = tipo === 'aviso' ? 'AVISO DE REGATA' : 'INSTRUCCIONES DE REGATA';
+    const ver = Math.max(0, ...docs.filter(d => d.tipo === tipo).map(d => d.version)) + 1;
+    const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
+    const path = st.ev.id + '/' + tipo + '-v' + ver + '-' + Date.now() + '.' + ext;
+
+    const { error: eUp } = await db.storage.from('documentos-regata')
+      .upload(path, file, { upsert: false, contentType: file.type || undefined });
+    if (eUp) { alert('No se pudo subir el archivo: ' + U.err(eUp)); return; }
+
+    const { data: pub } = db.storage.from('documentos-regata').getPublicUrl(path);
+
+    await guardar('documentos_regata', {
+      evento_id: st.ev.id, tipo, version: ver,
+      titulo: nombre + ' — ' + st.ev.nombre,
+      contenido: { archivo: { nombre: file.name, subido: new Date().toISOString() } },
+      url_archivo: pub.publicUrl,
+      publicado: false, creado_por: st.usuario.email
+    });
+
+    tabDocs();
+    modal('Archivo subido', `
+      <p>Se creó la <strong>versión ${ver}</strong> del ${nombre.toLowerCase()} con el archivo
+      <strong>${U.esc(file.name)}</strong>.</p>
+      <p class="small muted">Todavía está en borrador: tocá <strong>Publicar</strong> en la lista para que
+      quede visible en la ficha pública del evento.</p>`, [{ txt: 'Listo' }]);
   }
 
   function verDoc(d) {

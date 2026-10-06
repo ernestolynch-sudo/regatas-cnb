@@ -261,18 +261,38 @@
       return;
     }
 
+    const nombre = tipo === 'aviso' ? 'Aviso de Regata' : 'Instrucciones de Regata';
+    const encabezado = conImprimir => `<div class="row no-print" style="margin-bottom:12px">
+        <span class="chip azul">Versión ${doc.version}</span>
+        ${doc.fecha_publicacion ? '<span class="chip">Publicado ' + new Date(doc.fecha_publicacion).toLocaleDateString('es-AR') + '</span>' : ''}
+        <div class="spacer"></div>
+        ${doc.url_archivo ? '<a class="btn sec sm" target="_blank" rel="noopener" href="' + U.esc(doc.url_archivo) + '">↓ Descargar documento</a>' : ''}
+        ${conImprimir ? '<button class="btn sm" id="btnImp">Imprimir / Guardar PDF</button>' : ''}
+      </div>`;
+
+    // Documento subido por la Comisión (Word o PDF) en vez de generado desde la plantilla:
+    // se muestra el archivo oficial tal cual, sin recrear texto que nadie redactó.
+    if (doc.url_archivo && !doc.html) {
+      const esPdf = /\.pdf(\?|$)/i.test(doc.url_archivo);
+      p.innerHTML = encabezado(false) + `<div class="card">
+        <h2 class="mt0">${U.esc(nombre)}</h2>
+        <p>Documento oficial publicado por la Comisión de Vela y Motor.</p>
+        <div class="row" style="margin-bottom:12px">
+          <a class="btn" target="_blank" rel="noopener" href="${U.esc(doc.url_archivo)}">Abrir el documento</a>
+        </div>
+        ${esPdf ? `<iframe src="${U.esc(doc.url_archivo)}" title="${U.esc(nombre)}"
+            style="width:100%;height:70vh;border:1px solid var(--gris-300);border-radius:8px"></iframe>`
+          : '<p class="small muted">El archivo está en formato Word: se descarga para abrirlo.</p>'}
+      </div>`;
+      return;
+    }
+
     const html = doc.html || D.renderHTML(
       tipo === 'aviso' ? D.avisoDeRegata(e, estado.eventoClases, doc.contenido || {})
                        : D.instruccionesDeRegata(e, estado.eventoClases, doc.contenido || {}),
       e, { logo: (window.CNB_CONFIG || {}).LOGO, version: doc.version });
 
-    p.innerHTML = `<div class="row no-print" style="margin-bottom:12px">
-        <span class="chip azul">Versión ${doc.version}</span>
-        ${doc.fecha_publicacion ? '<span class="chip">Publicado ' + new Date(doc.fecha_publicacion).toLocaleDateString('es-AR') + '</span>' : ''}
-        <div class="spacer"></div>
-        ${doc.url_archivo ? '<a class="btn sec sm" target="_blank" href="' + U.esc(doc.url_archivo) + '">Descargar PDF</a>' : ''}
-        <button class="btn sm" id="btnImp">Imprimir / Guardar PDF</button>
-      </div>` + html;
+    p.innerHTML = encabezado(true) + html;
     U.$('#btnImp').addEventListener('click', () => U.imprimir(html, doc.titulo));
   }
 

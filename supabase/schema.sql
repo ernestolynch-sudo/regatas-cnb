@@ -814,6 +814,37 @@ where b.disponible;
 alter view public.v_bolsa_publica set (security_invoker = off);
 grant select on public.v_bolsa_publica to anon, authenticated;
 
+-- ---------------------------------------------------------------------------
+-- 17. STORAGE: Aviso de Regata e Instrucciones subidos como archivo
+-- ---------------------------------------------------------------------------
+-- La Comisión puede redactar el documento en Word y publicarlo tal cual, en vez
+-- de usar el generador. Este bucket SÍ es público de lectura: son documentos
+-- oficiales que cualquier competidor tiene que poder abrir sin tener cuenta.
+-- Subir, reemplazar y borrar queda restringido a comision/admin.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('documentos-regata', 'documentos-regata', true, 20971520,
+        array['application/pdf',
+              'application/msword',
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              'application/vnd.oasis.opendocument.text'])
+on conflict (id) do update set
+  public             = excluded.public,
+  file_size_limit    = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists docs_regata_insert_comision on storage.objects;
+create policy docs_regata_insert_comision on storage.objects for insert to authenticated
+  with check (bucket_id = 'documentos-regata' and public.es_comision());
+
+drop policy if exists docs_regata_update_comision on storage.objects;
+create policy docs_regata_update_comision on storage.objects for update to authenticated
+  using (bucket_id = 'documentos-regata' and public.es_comision())
+  with check (bucket_id = 'documentos-regata' and public.es_comision());
+
+drop policy if exists docs_regata_delete_comision on storage.objects;
+create policy docs_regata_delete_comision on storage.objects for delete to authenticated
+  using (bucket_id = 'documentos-regata' and public.es_comision());
+
 -- ============================================================================
 -- FIN DEL ESQUEMA
 -- ============================================================================
