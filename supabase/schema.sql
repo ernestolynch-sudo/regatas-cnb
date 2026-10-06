@@ -817,16 +817,14 @@ grant select on public.v_bolsa_publica to anon, authenticated;
 -- ---------------------------------------------------------------------------
 -- 17. STORAGE: Aviso de Regata e Instrucciones subidos como archivo
 -- ---------------------------------------------------------------------------
--- La Comisión puede redactar el documento en Word y publicarlo tal cual, en vez
--- de usar el generador. Este bucket SÍ es público de lectura: son documentos
--- oficiales que cualquier competidor tiene que poder abrir sin tener cuenta.
--- Subir, reemplazar y borrar queda restringido a comision/admin.
+-- La Comisión puede redactar el documento por fuera y publicar el PDF tal cual,
+-- en vez de usar el generador. Este bucket SÍ es público de lectura: son
+-- documentos oficiales que cualquier competidor tiene que poder abrir sin tener
+-- cuenta. Subir, reemplazar y borrar queda restringido a comision/admin.
+-- Sólo PDF: se ve embebido en la ficha del evento y se descarga igual que está.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('documentos-regata', 'documentos-regata', true, 20971520,
-        array['application/pdf',
-              'application/msword',
-              'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-              'application/vnd.oasis.opendocument.text'])
+        array['application/pdf'])
 on conflict (id) do update set
   public             = excluded.public,
   file_size_limit    = excluded.file_size_limit,

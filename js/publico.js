@@ -270,19 +270,16 @@
         ${conImprimir ? '<button class="btn sm" id="btnImp">Imprimir / Guardar PDF</button>' : ''}
       </div>`;
 
-    // Documento subido por la Comisión (Word o PDF) en vez de generado desde la plantilla:
-    // se muestra el archivo oficial tal cual, sin recrear texto que nadie redactó.
+    // PDF subido por la Comisión en vez de generado desde la plantilla: se muestra el
+    // documento oficial tal cual, sin recrear texto que nadie redactó.
     if (doc.url_archivo && !doc.html) {
-      const esPdf = /\.pdf(\?|$)/i.test(doc.url_archivo);
       p.innerHTML = encabezado(false) + `<div class="card">
         <h2 class="mt0">${U.esc(nombre)}</h2>
         <p>Documento oficial publicado por la Comisión de Vela y Motor.</p>
-        <div class="row" style="margin-bottom:12px">
-          <a class="btn" target="_blank" rel="noopener" href="${U.esc(doc.url_archivo)}">Abrir el documento</a>
-        </div>
-        ${esPdf ? `<iframe src="${U.esc(doc.url_archivo)}" title="${U.esc(nombre)}"
-            style="width:100%;height:70vh;border:1px solid var(--gris-300);border-radius:8px"></iframe>`
-          : '<p class="small muted">El archivo está en formato Word: se descarga para abrirlo.</p>'}
+        <iframe src="${U.esc(doc.url_archivo)}" title="${U.esc(nombre)}"
+          style="width:100%;height:75vh;border:1px solid var(--gris-300);border-radius:8px"></iframe>
+        <p class="small muted" style="margin-top:9px">Si el visor no carga en tu teléfono, usá
+          «Descargar documento» arriba para abrirlo con el lector de PDF.</p>
       </div>`;
       return;
     }
