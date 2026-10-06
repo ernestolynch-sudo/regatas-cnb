@@ -523,10 +523,9 @@
           <h2 class="mt0 mb0">${nombre}</h2>
           <span class="chip">Apéndice ${tipo === 'aviso' ? 'J1' : 'J2'} · RRV ${D.RRV_CICLO}</span>
           <div class="spacer"></div>
-          <button class="btn sec sm" data-prev="${tipo}">Previsualizar</button>
-          <button class="btn sec sm" data-subir="${tipo}">↑ Subir PDF</button>
+          <button class="btn ghost sm" data-prev="${tipo}">Ver modelo de referencia</button>
+          <button class="btn sm" data-subir="${tipo}">↑ Subir PDF</button>
           <input type="file" data-archivo="${tipo}" style="display:none" accept=".pdf,application/pdf">
-          <button class="btn sm" data-gen="${tipo}">Generar nueva versión</button>
         </div>
         ${propios.length ? `<div class="tabla-wrap" style="margin-top:12px"><table class="t">
           <thead><tr><th class="num">Ver.</th><th>Título</th><th>Origen</th><th>Publicado</th><th>Fecha</th><th></th></tr></thead>
@@ -544,16 +543,15 @@
               <button class="btn ${d.publicado ? 'ghost' : 'ok'} sm" data-pub="${d.id}">${d.publicado ? 'Despublicar' : 'Publicar'}</button>
               <button class="btn ghost sm" data-del="${d.id}">✕</button>
             </td></tr>`).join('')}</tbody></table></div>`
-          : `<p class="muted" style="margin-top:12px">Todavía no hay ${nombre.toLowerCase()} para este evento.
-             «Generar nueva versión» crea el texto completo conforme al Apéndice J del RRV, con los datos del
-             evento y las particularidades del Nahuel Huapi ya cargados. Después lo podés editar sección por sección.</p>`}
-        <p class="small muted" style="margin-top:11px">Si preferís redactarlo por fuera, subí el PDF:
-          se publica tal cual y queda visible para todos en la ficha pública del evento. Hay que
-          <strong>Publicar</strong> la versión para que se vea.</p>
+          : `<p class="muted" style="margin-top:12px">Todavía no se subió ${nombre === 'Aviso de Regata'
+             ? 'el Aviso de Regata' : 'las Instrucciones de Regata'} de este evento.</p>`}
+        <p class="small muted" style="margin-top:11px">Subí el PDF: se publica tal cual y queda visible para
+          todos en la ficha pública del evento. Hay que tocar <strong>Publicar</strong> para que se vea.
+          «Ver modelo de referencia» muestra un borrador armado con la estructura del Apéndice J del RRV y los
+          datos del evento — sirve como base para redactar el tuyo, no se guarda ni se publica.</p>
       </div>`;
     }).join('');
 
-    U.$$('[data-gen]', p).forEach(b => b.addEventListener('click', () => generarDoc(b.dataset.gen, docs)));
     U.$$('[data-subir]', p).forEach(b => b.addEventListener('click', () =>
       U.$('[data-archivo="' + b.dataset.subir + '"]', p).click()));
     U.$$('[data-archivo]', p).forEach(inp => inp.addEventListener('change', async () => {
@@ -581,25 +579,17 @@
       : D.instruccionesDeRegata(st.ev, st.evClases, opc || {});
   }
 
+  /**
+   * Borrador de referencia armado con la plantilla del Apéndice J y los datos del evento.
+   * No se guarda ni se publica: los documentos oficiales se suben en PDF. Sirve como base
+   * para redactarlos (se puede imprimir o guardar como PDF y editar por fuera).
+   */
   function previsualizar(tipo) {
     const doc = armar(tipo);
     const html = D.renderHTML(doc, st.ev, { logo: C.LOGO, version: '—' });
-    modal('Previsualización — ' + doc.titulo, html,
+    modal('Modelo de referencia — ' + doc.titulo, html,
       [{ txt: 'Imprimir', cls: 'sec', fn: () => { U.imprimir(html, doc.titulo); return false; } },
        { txt: 'Cerrar', cls: 'ghost' }]);
-  }
-
-  async function generarDoc(tipo, docs) {
-    if (!st.evClases.length && !confirm('El evento todavía no tiene clases cargadas: el documento saldrá incompleto. ¿Continuar igual?')) return;
-    const ver = Math.max(0, ...docs.filter(d => d.tipo === tipo).map(d => d.version)) + 1;
-    const doc = armar(tipo);
-    await guardar('documentos_regata', {
-      evento_id: st.ev.id, tipo, version: ver, titulo: doc.titulo + ' — ' + st.ev.nombre,
-      contenido: { secciones: doc.secciones, opciones: {} },
-      html: D.renderHTML(doc, st.ev, { logo: C.LOGO, version: ver }),
-      publicado: false, creado_por: st.usuario.email
-    });
-    tabDocs();
   }
 
   /**
