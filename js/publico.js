@@ -225,7 +225,7 @@
         <div class="card">
           <h2>Datos del evento</h2>
           <div class="tabla-wrap"><table class="t"><tbody>
-            ${filas.map(f => `<tr><th style="width:44%">${f[0]}</th><td style="white-space:normal">${f[1]}</td></tr>`).join('')}
+            ${filas.map(f => `<tr><th style="width:44%;white-space:normal">${f[0]}</th><td style="white-space:normal">${f[1]}</td></tr>`).join('')}
           </tbody></table></div>
         </div>
         <div>
