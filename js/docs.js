@@ -42,9 +42,9 @@
   function nombreSistema(s) {
     return ({
       monotipo:   'sin corrección de tiempos (monotipo)',
-      tot_phrf:   'Tiempo sobre Tiempo (PHRF), con TCF = B / (A + Rating)',
-      tot_factor: 'Tiempo sobre Tiempo con factor de corrección directo',
-      tod:        'Tiempo sobre Distancia (segundos por milla náutica)'
+      tot_phrf:   'Tiempo sobre Tiempo con rating CIC, TCF = B / (A + Rating)',
+      tod:        'Tiempo sobre Distancia con rating CIC (segundos por milla náutica)',
+      tot_factor: 'sistema heredado sin usar — reconfigurar la clase'
     })[s] || s;
   }
 
@@ -96,8 +96,12 @@
       y sólo obligatoria para los barcos que soliciten amarra de cortesía o ingreso al fondeadero del
       Club (ver punto 16).</p>
       ${hayHandicap ? `<p>3.6. Los barcos que corran con handicap deberán declarar su rating en el
-      formulario de inscripción. Los ratings serán asignados o revisados por la Comisión de Vela y
-      Motor. Un rating provisorio asignado por la Comisión no será motivo de solicitud de reparación.</p>` : ''}`);
+      formulario de inscripción, tomado del listado de ratings publicado por el Club de Impulso a
+      Cruceros (CIC). Los ratings serán asignados o revisados por la Comisión de Vela y
+      Motor. Un rating provisorio asignado por la Comisión no será motivo de solicitud de reparación.</p>
+      <p>3.7. Los cruceros compiten en una <strong>única clase PHRF</strong>, sin división en clases
+      A, B o C. La igualación entre barcos de distinto porte se hace exclusivamente a través del
+      rating del CIC aplicado a la corrección de tiempos (ver punto 10).</p>` : ''}`);
 
     add('Aranceles', `
       <p>4.1. Arancel de inscripción:</p>
@@ -152,10 +156,12 @@
     add('Puntaje', `
       <p>10.1. Se aplicará el Sistema de Puntuación Baja del Apéndice A del RRV.</p>
       <p>10.2. Sistema de corrección de tiempos por clase: ${sistemas.join('; ')}.</p>
-      ${hayHandicap ? `<p>10.3. Para las clases con handicap PHRF se aplicará Tiempo sobre Tiempo:
+      ${hayHandicap ? `<p>10.3. En la clase Crucero PHRF se aplicará Tiempo sobre Tiempo:
       <br><code>Tiempo Corregido = Tiempo Real × TCF</code>, donde
       <code>TCF = ${cls.find(c => c.sistema === 'tot_phrf')?.phrf_b || 650} / (${cls.find(c => c.sistema === 'tot_phrf')?.phrf_a || 550} + Rating)</code>
-      y el Rating se expresa en segundos por milla náutica.</p>` : ''}
+      y el Rating es el del listado del CIC, expresado en segundos por milla náutica. El rating es el
+      único dato que interviene en la corrección: no se aplican coeficientes por clase ni por grupo.
+      Un barco sin rating declarado ni asignado no podrá puntuar.</p>` : ''}
       <p>10.${hayHandicap ? '4' : '3'}. Descartes: ${cls.map(c =>
         c.nombre + ' — ' + (c.descarte_desde ? 'se descartará el peor puntaje al completarse ' +
         c.descarte_desde + ' pruebas válidas' : 'sin descarte')).join(' · ')}.</p>

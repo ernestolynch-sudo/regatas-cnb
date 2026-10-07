@@ -472,6 +472,11 @@
           ${disp.map(c => `<option value="${c.id}">${U.esc(c.nombre)}</option>`).join('')}
         </select>
       </div>
+      ${st.evClases.some(c => !S.SISTEMAS[c.sistema]) ? `<div class="alert error small" style="margin-top:12px">
+        Hay clases con un sistema de corrección que la app ya no usa
+        (${U.esc(st.evClases.filter(c => !S.SISTEMAS[c.sistema]).map(c => c.nombre).join(', '))}).
+        Mientras siga así <strong>no se calculan tiempos corregidos</strong> en esas clases.
+        Elegí «Tiempo sobre Tiempo» en la columna Sistema y guardá.</div>` : ''}
       ${st.evClases.length ? `<div class="tabla-wrap" style="margin-top:12px"><table class="t">
         <thead><tr><th>Clase</th><th>Sistema</th><th class="num">A</th><th class="num">B</th>
           <th class="num">Pruebas</th><th class="num">Mín.</th><th class="num">Desc. desde</th>
@@ -479,8 +484,10 @@
         <tbody>${st.evClases.map(c => `<tr data-ec="${c.id}">
           <td><strong>${U.esc(c.nombre || '')}</strong></td>
           <td><select class="c-sistema">
-            ${['monotipo','tot_phrf','tot_factor','tod'].map(s =>
+            ${Object.keys(S.SISTEMAS).map(s =>
               `<option value="${s}" ${c.sistema === s ? 'selected' : ''}>${D.nombreSistema(s)}</option>`).join('')}
+            ${S.SISTEMAS[c.sistema] ? '' :
+              `<option value="${U.esc(c.sistema)}" selected>&#9888; ${U.esc(c.sistema)} — sistema heredado, elegí uno</option>`}
           </select></td>
           <td class="num"><input class="c-a" type="number" step="1" value="${c.phrf_a ?? 550}" style="width:74px"></td>
           <td class="num"><input class="c-b" type="number" step="1" value="${c.phrf_b ?? 650}" style="width:74px"></td>
@@ -495,9 +502,15 @@
         <div class="row end" style="margin-top:12px"><button class="btn" id="btnGuardarClases">Guardar configuración</button></div>`
         : '<p class="muted" style="margin-top:12px">Todavía no agregaste clases a este evento.</p>'}
       <div class="alert info small" style="margin-top:14px">
-        <strong>PHRF Tiempo sobre Tiempo:</strong> <code>TCF = B / (A + Rating)</code> y
+        <strong>Crucero:</strong> hay una sola clase, <em>Crucero PHRF</em>. No se separa por A / B / C:
+        lo único que iguala a los barcos es el <strong>rating del listado del CIC</strong>, en segundos
+        por milla náutica. Un barco sin rating cargado no puede puntuar, así que la Comisión le asigna
+        uno provisorio antes de la primera prueba.<br>
+        <strong>Tiempo sobre Tiempo (lo que usa el CNB):</strong> <code>TCF = B / (A + Rating)</code> y
         <code>Tiempo corregido = Tiempo real × TCF</code>. Con A=550 y B=650 un barco de rating 100
         tiene TCF = 1,000. Bajar A endurece la corrección entre barcos de ratings distintos.<br>
+        <strong>Tiempo sobre Distancia:</strong> <code>Tiempo corregido = Tiempo real − Rating × Millas</code>.
+        Requiere cargar la distancia del recorrido en cada prueba.<br>
         <strong>Descartes:</strong> «desde 4 / cada 4 / máx. 2» significa 1 descarte al completarse
         4 pruebas válidas y 2 al completarse 8. Poner «desde 0» para no descartar.
       </div>
@@ -982,7 +995,7 @@
               ? trip.map(t => persona(t.nombre, t.dni, t.nacimiento)).join('<br>')
               : '________________________ · DNI __________ · Nac. __/__/____'}</td>
             ${c.sistema !== 'monotipo' ? '<td>' + (i.rating ?? '—') + '</td><td>' +
-              (i.rating != null ? S.tcfPhrf(i.rating, c.phrf_a, c.phrf_b).toFixed(4) : '—') + '</td>' : ''}
+              (S.tcfPhrf(i.rating, c.phrf_a, c.phrf_b)?.toFixed(4) ?? '—') + '</td>' : ''}
             <td style="width:60px"></td><td style="width:60px"></td></tr>`;
           }).join('')}
         </table></section>`;
@@ -1113,7 +1126,10 @@
           const r = prev.get(i.id) || {};
           return `<tr data-ins="${i.id}">
             <td class="mono">${U.esc(i.num_vela)}</td>
-            <td>${U.esc(i.nombre_barco)}${i.rating != null ? ' <span class="chip small">R ' + i.rating + '</span>' : ''}</td>
+            <td>${U.esc(i.nombre_barco)}${
+              i.rating != null ? ' <span class="chip small">R ' + i.rating + '</span>'
+              : (st.evClases.find(c => c.clase_id === i.clase_id) || {}).sistema !== 'monotipo'
+                ? ' <span class="chip rojo small" title="Sin rating no se puede corregir el tiempo">sin rating</span>' : ''}</td>
             <td><input type="time" step="1" class="r-larg" value="${U.esc((r.hora_largada || '').slice(0,8))}" style="width:118px"></td>
             <td><input type="time" step="1" class="r-lleg" value="${U.esc((r.hora_llegada || '').slice(0,8))}" style="width:118px"></td>
             <td><select class="r-cod" style="width:112px">
@@ -1131,6 +1147,7 @@
       { txt: 'Guardar y calcular', fn: async bg => {
         const largadaGral = U.$('#l_largada', bg).value;
         const dist = U.$('#l_dist', bg).value === '' ? null : +U.$('#l_dist', bg).value;
+        const sinCorregir = [];
         await guardar('pruebas', { id: pr.id, hora_largada: largadaGral || null, distancia_mn: dist, estado: 'valida' });
 
         for (const tr of U.$$('tr[data-ins]', bg)) {
@@ -1154,10 +1171,16 @@
             codigo: cod, puntos_manual: pm === '' ? null : +pm,
             notas: U.$('.r-nt', tr).value || null
           };
+          if (tr_s !== null && tc_s === null) sinCorregir.push(i.num_vela + ' ' + i.nombre_barco);
           if (existente) reg.id = existente.id;
           if (!lleg && cod === 'OK' && !existente) continue;   // sin datos, no crear registro
           await guardar('resultados', reg);
         }
+        if (sinCorregir.length)
+          alert('Se guardaron las llegadas, pero estos barcos quedaron sin tiempo corregido:\n\n' +
+                sinCorregir.join('\n') +
+                '\n\nRevisá que tengan rating cargado (y la distancia de la prueba, si la clase ' +
+                'puntúa por Tiempo sobre Distancia).');
         await refrescarEvento(); tabPruebas();
       } }
     ]);
@@ -1199,7 +1222,7 @@
             <td>${U.esc(f.inscripcion.nombre_barco)}</td>
             <td>${U.esc(f.inscripcion.timonel_nombre)}</td>
             ${hand ? '<td class="num">' + (f.inscripcion.rating ?? '—') + '</td><td class="num">' +
-              (f.inscripcion.rating != null ? S.tcfPhrf(f.inscripcion.rating, ec.phrf_a, ec.phrf_b).toFixed(4) : '—') + '</td>' : ''}
+              (S.tcfPhrf(f.inscripcion.rating, ec.phrf_a, ec.phrf_b)?.toFixed(4) ?? '—') + '</td>' : ''}
             ${f.pruebas.map(x => `<td class="num ${x.descartado ? 'desc' : ''}">${x.descartado ? '(' : ''}${x.codigo !== 'OK' ? x.codigo + ' ' : ''}${x.puntos}${x.descartado ? ')' : ''}</td>`).join('')}
             <td class="num"><strong>${f.total}</strong></td>
           </tr>`).join('')}</tbody>

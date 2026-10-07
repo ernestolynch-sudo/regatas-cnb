@@ -116,9 +116,8 @@
     U.$('#boxRating').style.display = hand ? '' : 'none';
     U.$('#hintClase').textContent = c
       ? 'Puntaje: ' + ({ monotipo: 'monotipo, sin corrección de tiempos',
-                         tot_phrf: 'PHRF Tiempo sobre Tiempo',
-                         tot_factor: 'Tiempo sobre Tiempo con factor',
-                         tod: 'Tiempo sobre Distancia' }[c.sistema] || c.sistema) +
+                         tot_phrf: 'Tiempo sobre Tiempo según rating CIC',
+                         tod: 'Tiempo sobre Distancia según rating CIC' }[c.sistema] || c.sistema) +
         ' · Pruebas previstas: ' + (c.pruebas_previstas || '—') +
         (c.tripulacion ? ' · Tripulación habitual: ' + c.tripulacion : '')
       : '';

@@ -3,12 +3,11 @@
  * Club Náutico Bariloche — Comisión de Vela y Motor
  * ----------------------------------------------------------------------------
  * Implementa:
- *   1) Corrección de tiempos por handicap
+ *   1) Corrección de tiempos por handicap, SIEMPRE en base al rating CIC
+ *      (en crucero no hay clases A/B/C: una sola clase PHRF y el rating iguala)
  *        · monotipo    → sin corrección (orden de llegada)
  *        · tot_phrf    → Tiempo sobre Tiempo PHRF: TCF = B / (A + Rating)
  *                        Tiempo corregido = Tiempo real × TCF        [DEFECTO CNB]
- *        · tot_factor  → Tiempo sobre Tiempo con factor directo (estilo IRC TCC)
- *                        Tiempo corregido = Tiempo real × Factor
  *        · tod         → Tiempo sobre Distancia: TC = TR − (Rating[s/MN] × Distancia)
  *   2) Sistema de Puntuación Baja — Apéndice A, RRV 2025-2028 (World Sailing / FAY)
  *        · A4  puntaje por puesto (1º = 1 punto ...)
@@ -85,24 +84,50 @@
   // 1) CORRECCIÓN DE TIEMPOS
   // -------------------------------------------------------------------------
   /**
+   * Sistemas de corrección de tiempos disponibles.
+   * En crucero la corrección depende EXCLUSIVAMENTE del rating CIC del barco:
+   * no hay clases A/B/C, todos los cruceros corren en una sola clase PHRF y el
+   * rating es lo único que los iguala.
+   */
+  const SISTEMAS = {
+    monotipo: 'Monotipo — sin corrección de tiempos',
+    tot_phrf: 'Tiempo sobre Tiempo (rating CIC) — TCF = B / (A + Rating)',
+    tod:      'Tiempo sobre Distancia (rating CIC) — Real − Rating × Millas'
+  };
+
+  /**
    * Factor de corrección TCF para Tiempo sobre Tiempo PHRF.
    * TCF = B / (A + Rating)   — valores usuales A = 550, B = 650 (s/MN).
    * Un barco más rápido tiene rating MENOR y por lo tanto TCF MAYOR:
    * su tiempo real se "castiga" al corregirlo.
    */
+  /**
+   * Numero o null. Hace falta porque Number(null) y Number('') dan 0, y un rating
+   * o una distancia "vacios" se tomarian como 0: el tiempo saldria corregido mal
+   * en lugar de quedar sin corregir.
+   */
+  function num(v) {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return isFinite(n) ? n : null;
+  }
+
   function tcfPhrf(rating, A, B) {
-    A = (A === undefined || A === null) ? 550 : Number(A);
-    B = (B === undefined || B === null) ? 650 : Number(B);
-    const r = Number(rating);
-    if (!isFinite(r) || (A + r) === 0) return null;
-    return B / (A + r);
+    const a = num(A) === null ? 550 : num(A);
+    const b = num(B) === null ? 650 : num(B);
+    const r = num(rating);
+    if (r === null || (a + r) === 0) return null;
+    return b / (a + r);
   }
 
   /**
    * Tiempo corregido, en segundos.
+   * Devuelve null cuando no se puede corregir (falta el rating, falta la distancia
+   * en ToD, o el evento tiene un sistema que la app ya no usa): es preferible no
+   * mostrar resultado a mostrar uno mal corregido.
    * @param {number}  tiempoRealS  tiempo navegado en segundos
    * @param {object}  cfg          { sistema, phrf_a, phrf_b }
-   * @param {number}  rating       rating del barco (s/MN en PHRF, factor en tot_factor)
+   * @param {number}  rating       rating CIC del barco, en segundos por milla
    * @param {number}  distanciaMN  distancia del recorrido en millas náuticas (sólo ToD)
    */
   function tiempoCorregido(tiempoRealS, cfg, rating, distanciaMN) {
@@ -115,17 +140,13 @@
         const tcf = tcfPhrf(rating, cfg.phrf_a, cfg.phrf_b);
         return tcf === null ? null : tiempoRealS * tcf;
       }
-      case 'tot_factor': {
-        const f = Number(rating);
-        return isFinite(f) && f > 0 ? tiempoRealS * f : null;
-      }
       case 'tod': {
-        const r = Number(rating), d = Number(distanciaMN);
-        if (!isFinite(r) || !isFinite(d)) return null;
+        const r = num(rating), d = num(distanciaMN);
+        if (r === null || d === null) return null;
         return tiempoRealS - (r * d);
       }
       default:
-        return tiempoRealS;
+        return null;
     }
   }
 
@@ -423,7 +444,7 @@
 
   // -------------------------------------------------------------------------
   return {
-    CODIGOS,
+    CODIGOS, SISTEMAS,
     hmsASegundos, segundosAHms, tiempoNavegado,
     tcfPhrf, tiempoCorregido,
     puntuarPrueba, cantidadDescartes, calcularSerie, serieACSV

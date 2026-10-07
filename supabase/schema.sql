@@ -107,8 +107,8 @@ create table if not exists public.temporadas (
 -- ---------------------------------------------------------------------------
 create table if not exists public.clases (
   id          uuid primary key default gen_random_uuid(),
-  codigo      text not null unique,           -- OPT, ILCA7, SNI, PAM, CRU-A
-  nombre      text not null,                  -- Optimist, ILCA 7, Snipe, Pampero, Crucero A
+  codigo      text not null unique,           -- OPT, ILCA7, SNI, PAM, CRU-PHRF
+  nombre      text not null,                  -- Optimist, ILCA 7, Snipe, Pampero, Crucero PHRF
   tipo        text not null default 'monotipo'
               check (tipo in ('monotipo','handicap')),
   categoria   text,                           -- 'Juvenil', 'Adulto', 'Crucero'
@@ -180,8 +180,11 @@ create table if not exists public.evento_clases (
   clase_id      uuid not null references public.clases(id) on delete restrict,
 
   -- Sistema de corrección de tiempos
+  -- En handicap la corrección depende SOLO del rating CIC del barco:
+  --   tot_phrf  Tiempo corregido = Tiempo real x phrf_b / (phrf_a + Rating)
+  --   tod       Tiempo corregido = Tiempo real - Rating x Distancia(MN)
   sistema       text not null default 'monotipo'
-                check (sistema in ('monotipo','tot_phrf','tot_factor','tod')),
+                check (sistema in ('monotipo','tot_phrf','tod')),
   -- Coeficientes PHRF Tiempo sobre Tiempo:  TCF = phrf_b / (phrf_a + Rating)
   phrf_a        numeric(10,3) default 550,
   phrf_b        numeric(10,3) default 650,
@@ -651,6 +654,109 @@ insert into public.temporadas (nombre, fecha_inicio, fecha_fin, activa)
 values ('2026-2027', '2026-09-01', '2027-05-31', true)
 on conflict (nombre) do nothing;
 
+-- ---------------------------------------------------------------------------
+-- MIGRACION: una sola clase de crucero, corregida por rating CIC
+-- ---------------------------------------------------------------------------
+-- Decision de la Comision de Vela: en crucero no se separa por clases A / B / C.
+-- Todos corren juntos en 'Crucero PHRF' y lo unico que los iguala es el rating
+-- publicado por el CIC. Este bloque es idempotente: se puede correr de nuevo.
+do $$
+declare
+  v_phrf uuid;
+  v_vieja record;
+  v_choque int;
+  v_con   text;
+begin
+  -- 1) CRU-A pasa a ser la unica clase de crucero (conserva su id, asi no se
+  --    rompen las inscripciones ni los resultados ya cargados).
+  if not exists (select 1 from public.clases where codigo = 'CRU-PHRF') then
+    update public.clases
+       set codigo = 'CRU-PHRF', nombre = 'Crucero PHRF (rating CIC)', orden = 60
+     where codigo = 'CRU-A';
+  end if;
+
+  select id into v_phrf from public.clases where codigo = 'CRU-PHRF';
+  if v_phrf is null then return; end if;
+
+  -- 2) Lo que estaba en Crucero B / C se pasa a la clase unica.
+  for v_vieja in select id, codigo from public.clases
+                  where codigo in ('CRU-A','CRU-B','CRU-C') and id <> v_phrf loop
+
+    -- la clase unica tiene que estar en el evento antes de mover inscripciones
+    insert into public.evento_clases
+      (evento_id, clase_id, sistema, phrf_a, phrf_b, pruebas_previstas, pruebas_minimas,
+       descarte_desde, descarte_cada, descartes_max, bandera_clase, orden_largada)
+    select ec.evento_id, v_phrf, 'tot_phrf', ec.phrf_a, ec.phrf_b, ec.pruebas_previstas,
+           ec.pruebas_minimas, ec.descarte_desde, ec.descarte_cada, ec.descartes_max,
+           ec.bandera_clase, ec.orden_largada
+      from public.evento_clases ec
+     where ec.clase_id = v_vieja.id
+    on conflict (evento_id, clase_id) do nothing;
+
+    -- num_vela es unico por (evento, clase): avisar si algo no puede moverse
+    select count(*) into v_choque
+      from public.inscripciones a
+      join public.inscripciones b
+        on b.evento_id = a.evento_id and b.clase_id = v_phrf and b.num_vela = a.num_vela
+     where a.clase_id = v_vieja.id;
+    if v_choque > 0 then
+      raise notice 'ATENCION: % inscripcion(es) de % repiten numero de vela en Crucero PHRF y quedan sin mover.',
+                   v_choque, v_vieja.codigo;
+    end if;
+
+    update public.inscripciones a
+       set clase_id = v_phrf
+     where a.clase_id = v_vieja.id
+       and not exists (select 1 from public.inscripciones b
+                        where b.evento_id = a.evento_id and b.clase_id = v_phrf
+                          and b.num_vela = a.num_vela);
+
+    -- pruebas que apuntaban a la clase vieja (numero es unico por evento+clase:
+    -- si la prueba ya existe en Crucero PHRF, la vieja queda anulada en vez de chocar)
+    update public.pruebas a
+       set clase_id = v_phrf
+     where a.clase_id = v_vieja.id
+       and not exists (select 1 from public.pruebas b
+                        where b.evento_id = a.evento_id and b.clase_id = v_phrf
+                          and b.numero = a.numero);
+    if exists (select 1 from public.pruebas where clase_id = v_vieja.id) then
+      raise notice 'ATENCION: quedan pruebas en % con un numero que ya existe en Crucero PHRF; revisalas a mano.',
+                   v_vieja.codigo;
+    end if;
+
+    -- ya no queda nada en la clase vieja: se la saca de los eventos
+    delete from public.evento_clases ec
+     where ec.clase_id = v_vieja.id
+       and not exists (select 1 from public.inscripciones i
+                        where i.clase_id = v_vieja.id and i.evento_id = ec.evento_id);
+
+    -- se desactiva, no se borra, para no perder el historial
+    update public.clases set activa = false where id = v_vieja.id;
+  end loop;
+
+  -- 3) 'tot_factor' multiplicaba el tiempo real por el rating (resultados
+  --    absurdos con ratings en segundos por milla). Pasa a Tiempo sobre Tiempo.
+  update public.evento_clases
+     set sistema = 'tot_phrf',
+         phrf_a  = coalesce(phrf_a, 550),
+         phrf_b  = coalesce(phrf_b, 650)
+   where sistema = 'tot_factor';
+
+  -- 4) y se deja de aceptar (se busca el check por contenido, no por nombre)
+  for v_con in select conname from pg_constraint
+                where conrelid = 'public.evento_clases'::regclass
+                  and contype = 'c'
+                  and pg_get_constraintdef(oid) like '%tot_factor%' loop
+    execute format('alter table public.evento_clases drop constraint %I', v_con);
+  end loop;
+  if not exists (select 1 from pg_constraint
+                  where conrelid = 'public.evento_clases'::regclass
+                    and conname = 'evento_clases_sistema_check') then
+    alter table public.evento_clases add constraint evento_clases_sistema_check
+      check (sistema in ('monotipo','tot_phrf','tod'));
+  end if;
+end $$;
+
 insert into public.clases (codigo, nombre, tipo, categoria, tripulacion, orden) values
   ('OPT',    'Optimist',            'monotipo', 'Juvenil',  1, 10),
   ('OPT-P',  'Optimist Principiantes','monotipo','Juvenil', 1, 15),
@@ -659,10 +765,10 @@ insert into public.clases (codigo, nombre, tipo, categoria, tripulacion, orden) 
   ('ILCA7',  'ILCA 7 (Laser Std.)', 'monotipo', 'Adulto',   1, 30),
   ('SNI',    'Snipe',               'monotipo', 'Adulto',   2, 40),
   ('PAM',    'Pampero',             'monotipo', 'Adulto',   2, 50),
-  ('CRU-A',  'Crucero A (PHRF)',    'handicap', 'Crucero',  4, 60),
-  ('CRU-B',  'Crucero B (PHRF)',    'handicap', 'Crucero',  4, 70),
+  ('CRU-PHRF','Crucero PHRF (rating CIC)','handicap','Crucero', 4, 60),
   ('LIBRE',  'Clase Libre / Handicap','handicap','Adulto',  2, 80)
 on conflict (codigo) do nothing;
+
 
 -- IMPORTANTE: cargar acá el email de cada integrante de la comisión.
 insert into public.usuarios_autorizados (email, nombre, rol) values

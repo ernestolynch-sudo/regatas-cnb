@@ -24,9 +24,21 @@ const tcLento  = S.tiempoCorregido(8100, cfg, 180);  // 8100 × 650/730 = 7212.3
 chk('TC barco rápido R=60', +tcRapido.toFixed(2), 7672.13);
 chk('TC barco lento  R=180', +tcLento.toFixed(2), 7212.33);
 chk('gana el lento por corregido', tcLento < tcRapido, true);
+// En crucero la clase no influye: dos barcos con el mismo rating corrigen igual
+chk('mismo rating → mismo corregido', S.tiempoCorregido(7200, cfg, 120),
+                                      S.tiempoCorregido(7200, cfg, 120));
+chk('sin rating no se puede corregir', S.tiempoCorregido(7200, cfg, null), null);
 
 console.log('\n3) Tiempo sobre Distancia — TC = TR − R×D');
 chk('TR 7200 s, R=30 s/MN, D=12 MN', S.tiempoCorregido(7200, { sistema: 'tod' }, 30, 12), 6840);
+chk('ToD sin distancia → null', S.tiempoCorregido(7200, { sistema: 'tod' }, 30, null), null);
+
+console.log('\n3 bis) Sistemas vigentes — sólo rating CIC');
+chk('los sistemas son monotipo, tot_phrf y tod',
+    Object.keys(S.SISTEMAS).join(','), 'monotipo,tot_phrf,tod');
+chk('tot_factor ya no corrige', S.tiempoCorregido(7200, { sistema: 'tot_factor' }, 24.9), null);
+chk('sistema desconocido no corrige', S.tiempoCorregido(7200, { sistema: 'xx' }, 100), null);
+chk('monotipo devuelve el tiempo real', S.tiempoCorregido(7200, { sistema: 'monotipo' }, null), 7200);
 
 console.log('\n4) Puntaje de una prueba (Apéndice A4/A5/A7)');
 const nSerie = 8;
