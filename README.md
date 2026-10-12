@@ -149,6 +149,10 @@ Sin esto, el magic link redirige a `localhost` y el panel no abre.
   CNB del barco (`OPT-C-001`), para cruzar con el sistema de trazabilidad de la Escuela de Vela.
 - **Logo.** `assets/logo-cnb.png` es el escudo oficial del Club (edicion 80 anios, 1947-2027),
   recortado y con fondo transparente para que se vea bien sobre el azul del encabezado.
+- **Iconos de pestania.** `assets/favicon.ico` (16/32/48), `assets/favicon-32.png` y
+  `assets/apple-touch-icon.png` (180, pantalla de inicio de iOS) salen del mismo escudo, sobre
+  fondo blanco: en transparente el azul del escudo se pierde contra las pestanias en modo oscuro.
+  Si se cambia el logo hay que regenerarlos los tres.
 
 ---
 
