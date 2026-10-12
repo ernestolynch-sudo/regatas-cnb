@@ -186,8 +186,8 @@
       U.aviso('#avisos', 'error', 'Adjuntá la constancia de seguro: es obligatoria para solicitar amarra de cortesía o el ingreso al fondeadero.');
       return;
     }
-    if (!/^\d{6}$/.test(U.$('#timonel_pin').value.trim())) {
-      U.aviso('#avisos', 'error', 'Elegí un PIN de acceso de 6 dígitos: es el que vas a usar para entrar a «Mi inscripción».');
+    if (U.$('#timonel_dni').value.replace(/[^0-9a-zA-Z]/g, '').length < 6) {
+      U.aviso('#avisos', 'error', 'Ingresá el DNI o pasaporte del timonel: es con lo que vas a poder recuperar tu PIN si te lo olvidás.');
       return;
     }
 
@@ -262,14 +262,17 @@
       U.aviso('#avisos', 'error', U.esc(U.err(error))); return;
     }
 
-    // Cuenta de acceso a "Mi inscripción" con el PIN elegido. Si ya existía una cuenta con
-    // ese correo, Supabase no la toca: el PIN anterior sigue valiendo, y eso es lo que
-    // queremos — nadie puede pisar el PIN de otro escribiendo su email.
+    // Cuenta de acceso a "Mi inscripción". El PIN lo genera el sistema y se muestra al
+    // confirmar: inventarlo y tipearlo era un paso mas en un formulario ya largo, y ahora
+    // que se puede recuperar solo (correo + DNI) olvidarselo dejo de ser un problema.
+    // Si ya existía una cuenta con ese correo, Supabase no la toca: el PIN anterior sigue
+    // valiendo, y eso es lo que queremos — nadie puede pisar el PIN de otro escribiendo su email.
     // 'ok' = quedó el PIN nuevo · 'existia' = sigue el anterior · 'falla' = hay que pedirlo a la Comisión.
+    const pinAsignado = U.pinNuevo();
     let estadoPin = 'ok';
     try {
       const { data: alta, error: errAlta } = await db.auth.signUp({
-        email: reg.timonel_email, password: U.$('#timonel_pin').value.trim()
+        email: reg.timonel_email, password: pinAsignado
       });
       if (errAlta) {
         estadoPin = /already registered|already exists/i.test(errAlta.message || '') ? 'existia' : 'falla';
@@ -300,23 +303,41 @@
                 con DNI, constancia de seguro${reg.autoriza_menor ? ' y la autorización del responsable legal' : ''}.</li>
             <li>Podés consultar o corregir tus datos en cualquier momento desde
                 <a href="mi-inscripcion.html">Mi inscripción</a>, entrando con
-                <strong>${U.esc(reg.timonel_email)}</strong> y ${estadoPin === 'existia'
-                  ? 'el PIN que ya habías elegido en una inscripción anterior con este correo'
-                  : 'el PIN que acabás de elegir'}.</li>
+                <strong>${U.esc(reg.timonel_email)}</strong> y tu PIN.</li>
           </ol>
         </div>
-        ${estadoPin === 'existia' ? `<div class="alert warn" style="text-align:left">
-          Este correo ya tenía un PIN de una inscripción anterior, así que <strong>se mantuvo el
-          anterior</strong> y no se aplicó el que cargaste recién. Si no lo recordás, escribinos y
-          la Comisión te genera uno nuevo.</div>` : ''}
+        ${estadoPin === 'ok' ? `<div class="card" style="background:var(--azul-050);text-align:center;margin-top:4px">
+          <p class="mb0"><strong>Tu PIN para entrar a «Mi inscripción»</strong></p>
+          <p class="mono" style="font-size:32px;font-weight:700;letter-spacing:6px;color:var(--azul-700);margin:8px 0">${U.esc(pinAsignado)}</p>
+          <button class="btn sec sm" id="btnCopiarPin">Copiar correo y PIN</button>
+          <p class="small muted" style="margin:10px 0 0">Anotalo. Si lo perdés lo recuperás vos mismo
+            en <a href="mi-inscripcion.html">Mi inscripción</a> con este correo y tu DNI.</p>
+        </div>` : ''}
+        ${estadoPin === 'existia' ? `<div class="alert info" style="text-align:left">
+          Este correo ya tenía una cuenta de una inscripción anterior, así que <strong>seguí usando
+          el PIN de esa vez</strong>. Si no lo recordás, en
+          <a href="mi-inscripcion.html">Mi inscripción</a> lo recuperás con este correo y tu DNI.</div>` : ''}
         ${estadoPin === 'falla' ? `<div class="alert warn" style="text-align:left">
           Tu inscripción quedó registrada, pero no pudimos dejar activo tu PIN de acceso.
-          Escribile a la Comisión y te lo generan en el momento.</div>` : ''}
+          Probá recuperarlo en <a href="mi-inscripcion.html">Mi inscripción</a> con este correo y tu
+          DNI; si tampoco sale, escribile a la Comisión.</div>` : ''}
         <div class="row center" style="justify-content:center;margin-top:14px">
           <a class="btn sec" href="index.html?evento=${E.evento.id}">Ver el evento</a>
           <a class="btn" href="inscripcion.html?evento=${E.evento.id}">Inscribir otro barco</a>
         </div>
       </div>`;
+    const btnCopiar = U.$('#btnCopiarPin');
+    if (btnCopiar) btnCopiar.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(
+          'Mi inscripción — Regatas CNB\n' + location.origin + '/mi-inscripcion\n' +
+          'Correo: ' + reg.timonel_email + '\nPIN: ' + pinAsignado);
+        btnCopiar.textContent = 'Copiado ✓';
+      } catch (_) {
+        btnCopiar.textContent = 'No se pudo copiar — anotalo a mano';
+      }
+    });
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 })();

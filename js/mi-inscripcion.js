@@ -1,9 +1,12 @@
 /* ============================================================================
  * mi-inscripcion.js — Autoservicio del timonel: consulta y edición de SU
- * PROPIA inscripción, autenticado por magic link (no requiere estar en
- * usuarios_autorizados). RLS (insc_select_propio / insc_update_propio en
- * supabase/schema.sql) garantiza que sólo ve y edita filas cuyo timonel_email
- * coincide con su sesión, y sólo mientras el estado sea 'pendiente'.
+ * PROPIA inscripción, con correo + PIN de 6 dígitos (no requiere estar en
+ * usuarios_autorizados y no manda ningún mail). RLS (insc_select_propio /
+ * insc_update_propio en supabase/schema.sql) garantiza que sólo ve y edita filas
+ * cuyo timonel_email coincide con su sesión, y sólo mientras esté 'pendiente'.
+ *
+ * Si olvidó el PIN lo recupera acá mismo con su correo + el DNI que declaró al
+ * inscribirse, contra la Edge Function 'recuperar-pin-timonel'.
  * ==========================================================================*/
 (function () {
   'use strict';
@@ -16,6 +19,11 @@
     U.$('#btnLogin').addEventListener('click', login);
     U.$('#email').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
     U.$('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+    U.$('#linkOlvide').addEventListener('click', e => { e.preventDefault(); verRecupero(true); });
+    U.$('#linkVolverLogin').addEventListener('click', e => { e.preventDefault(); verRecupero(false); });
+    U.$('#btnRecuperar').addEventListener('click', recuperar);
+    U.$('#recPin').addEventListener('keydown', e => { if (e.key === 'Enter') recuperar(); });
+    U.ojosPin();
     // El setTimeout no es cosmético: supabase-js mantiene un candado mientras corre este
     // callback, y cualquier consulta lanzada acá adentro queda esperándolo para siempre.
     // Diferirla un tick libera el candado y deja que la carga funcione.
@@ -35,8 +43,60 @@
     // Si anda, onAuthStateChange muestra la lista solo.
   }
 
+  function verRecupero(si) {
+    U.$('#login').style.display = si ? 'none' : '';
+    U.$('#recupero').style.display = si ? '' : 'none';
+    U.aviso('#recAviso', 'info', '');
+  }
+
+  /**
+   * Recupero sin correo: el timonel se identifica con su correo + el DNI que
+   * declaró al inscribirse. La verificación corre en la Edge Function
+   * 'recuperar-pin-timonel' — acá no se puede comprobar nada, porque el RLS no
+   * le deja leer la inscripción a quien todavía no inició sesión (que es
+   * justamente el caso) y porque cualquier chequeo del navegador se saltea.
+   */
+  async function recuperar() {
+    const email = U.$('#recEmail').value.trim().toLowerCase();
+    const dni   = U.$('#recDni').value.trim();
+    const pin   = U.$('#recPin').value.trim();
+    if (!email || !dni) { U.aviso('#recAviso', 'error', 'Completá tu correo y tu DNI.'); return; }
+    if (!/^\d{6}$/.test(pin)) { U.aviso('#recAviso', 'error', 'El PIN nuevo tiene que ser de 6 dígitos.'); return; }
+
+    const btn = U.$('#btnRecuperar');
+    btn.disabled = true; btn.textContent = 'Verificando…';
+    U.aviso('#recAviso', 'info', 'Verificando tus datos…');
+
+    const { data: r, error } = await db.functions.invoke('recuperar-pin-timonel',
+      { body: { email, dni, pin } });
+
+    btn.disabled = false; btn.textContent = 'Guardar PIN y entrar';
+
+    // Ante un status no-2xx supabase-js deja un mensaje genérico en error.message
+    // y el motivo real en el cuerpo: lo leemos para mostrar algo útil.
+    let detalle = (r && r.error) || null;
+    if (!detalle && error) {
+      detalle = error.message;
+      try { const c = await error.context.json(); if (c && c.error) detalle = c.error; } catch (_) {}
+      if (/failed to send a request|fetch/i.test(detalle || '')) {
+        detalle = 'No se pudo contactar la función «recuperar-pin-timonel». ' +
+          'Avisale a la Comisión: falta desplegarla en Supabase.';
+      }
+    }
+    if (detalle) { U.aviso('#recAviso', 'error', U.esc(detalle)); return; }
+
+    U.aviso('#recAviso', 'ok', 'PIN actualizado. Entrando…');
+    const { error: errLogin } = await db.auth.signInWithPassword({ email, password: pin });
+    if (errLogin) {
+      verRecupero(false);
+      U.aviso('#loginAviso', 'ok', 'Tu PIN quedó actualizado. Ingresá con tu correo y el PIN nuevo.');
+    }
+    // Si andaba, onAuthStateChange muestra la lista solo.
+  }
+
   async function mostrarSesion() {
     U.$('#login').style.display = 'none';
+    U.$('#recupero').style.display = 'none';
     U.$('#lista').style.display = '';
     U.$('#btnSalir').addEventListener('click', async () => { await db.auth.signOut(); location.reload(); });
     await cargarLista();

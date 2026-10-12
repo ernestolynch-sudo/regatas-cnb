@@ -387,6 +387,12 @@ begin
      and coalesce(p->>'seguro_archivo_path','') = '' then
     raise exception 'La constancia de seguro es obligatoria para solicitar amarra de cortesía o el ingreso al fondeadero.';
   end if;
+  -- El DNI del timonel es obligatorio: es el dato con el que despues recupera su PIN
+  -- por su cuenta (ver la Edge Function recuperar-pin-timonel). Se valida aca ademas
+  -- del formulario, porque la validacion del navegador se saltea sin esfuerzo.
+  if length(regexp_replace(coalesce(p->>'timonel_dni',''), '[^0-9A-Za-z]', '', 'g')) < 6 then
+    raise exception 'Ingresá el número de DNI o pasaporte del timonel.';
+  end if;
 
   insert into public.inscripciones (
     evento_id, clase_id, nombre_barco, num_vela, modelo, club, codigo_flota,
@@ -953,6 +959,36 @@ create policy docs_regata_update_comision on storage.objects for update to authe
 drop policy if exists docs_regata_delete_comision on storage.objects;
 create policy docs_regata_delete_comision on storage.objects for delete to authenticated
   using (bucket_id = 'documentos-regata' and public.es_comision());
+
+-- ============================================================================
+-- RECUPERO DE PIN DEL TIMONEL — registro de intentos
+-- ============================================================================
+-- Un timonel que olvido su PIN lo recupera con su correo + su DNI (Edge Function
+-- 'recuperar-pin-timonel'). Un DNI son 8 digitos: sin un tope de intentos,
+-- probarlos todos contra un correo conocido es cuestion de minutos. Esta tabla
+-- es la que lleva la cuenta, y de paso deja rastro de quien intento que.
+--
+-- Nadie la lee ni la escribe desde el navegador: RLS activo y SIN policies, asi
+-- que solo la toca la service_role, que es con lo que corre la Edge Function.
+create table if not exists public.intentos_pin (
+  id         bigserial primary key,
+  email      text not null,
+  ip         text,
+  exito      boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_intentos_pin_email on public.intentos_pin (email, created_at desc);
+create index if not exists idx_intentos_pin_ip    on public.intentos_pin (ip, created_at desc);
+
+alter table public.intentos_pin enable row level security;
+
+-- Limpieza: los intentos solo importan dentro de la ventana de una hora.
+-- Se puede programar con pg_cron, o correrla a mano de vez en cuando.
+create or replace function public.limpiar_intentos_pin()
+returns void language sql security definer set search_path = public as $$
+  delete from public.intentos_pin where created_at < now() - interval '7 days';
+$$;
 
 -- ============================================================================
 -- FIN DEL ESQUEMA

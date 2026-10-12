@@ -1682,12 +1682,8 @@ Organiza: Comisión de Vela y Motor del CNB. Regata conforme al RRV ${D.RRV_CICL
     }));
   }
 
-  /** PIN provisorio de 6 dígitos, aleatorio de verdad (no Math.random). */
-  function pinProvisorio() {
-    const n = new Uint32Array(1);
-    crypto.getRandomValues(n);
-    return String(n[0] % 1000000).padStart(6, '0');
-  }
+  /** PIN provisorio de 6 dígitos (el generador vive en db.js, lo comparten las dos pantallas). */
+  const pinProvisorio = () => U.pinNuevo();
 
   /** Alta de usuario del panel, o PIN nuevo si ya existe (u con datos precargados). */
   function formUsuario(u) {

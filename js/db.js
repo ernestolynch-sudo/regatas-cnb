@@ -173,6 +173,13 @@
 
     param: k => new URLSearchParams(location.search).get(k),
 
+    /** PIN de 6 dígitos, aleatorio de verdad (crypto, no Math.random). */
+    pinNuevo() {
+      const n = new Uint32Array(1);
+      crypto.getRandomValues(n);
+      return String(n[0] % 1000000).padStart(6, '0');
+    },
+
     /**
      * Agrega el "ojito" para ver/ocultar a cada campo de PIN de la página.
      * Se aplica solo a los input[type=password], así que alcanza con llamarla una vez;
