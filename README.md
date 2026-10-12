@@ -147,8 +147,8 @@ Sin esto, el magic link redirige a `localhost` y el panel no abre.
   distancia a los canales de embarcaciones comerciales de Puerto San Carlos.
 - **Reutilizar el registro de flota.** El campo `codigo_flota` de la inscripción admite el código
   CNB del barco (`OPT-C-001`), para cruzar con el sistema de trazabilidad de la Escuela de Vela.
-- **Logo.** `assets/logo-cnb.jpg` es un provisorio generado. Reemplazarlo por el logo real del Club
-  (el mismo que usa `registro-flota-web/assets/logo-cnb.jpg`).
+- **Logo.** `assets/logo-cnb.png` es el escudo oficial del Club (edicion 80 anios, 1947-2027),
+  recortado y con fondo transparente para que se vea bien sobre el azul del encabezado.
 
 ---
 

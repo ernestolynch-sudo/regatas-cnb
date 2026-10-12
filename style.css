@@ -48,14 +48,18 @@ a { color: var(--azul-500); }
 .topbar {
   background: linear-gradient(135deg, var(--azul-900), var(--azul-700));
   color: #fff;
-  padding: 14px 0;
+  padding: 11px 0;
   box-shadow: var(--sombra);
   position: sticky; top: 0; z-index: 50;
 }
 .topbar .wrap { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.topbar img { height: 62px; width: 62px; object-fit: contain; border-radius: 10px; background: #fff; padding: 3px; }
+/* El escudo es un ovalo vertical (relacion 0,71) con borde plateado propio y
+   fondo transparente: se deja respirar sobre el azul, sin recuadro blanco y sin
+   forzarlo a un cuadrado. La sombra lo despega del degrade de la barra. */
+.topbar img { height: 80px; width: auto; object-fit: contain;
+              filter: drop-shadow(0 2px 5px rgba(0,0,0,.33)); }
 .topbar .marca { line-height: 1.15; }
-.topbar .marca b { display: block; font-size: 16px; letter-spacing: .3px; }
+.topbar .marca b { display: block; font-size: 17px; letter-spacing: .3px; }
 .topbar .marca span { font-size: 12px; opacity: .8; text-transform: uppercase; letter-spacing: 1.1px; }
 .topbar nav { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; }
 .topbar nav a, .topbar nav button {
@@ -243,7 +247,7 @@ table.t tr.podio3 td { background: #fdf1e7; }
   font-size: 14px; line-height: 1.62;
 }
 .doc-regata .doc-head { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid var(--azul-800); padding-bottom: 12px; margin-bottom: 20px; }
-.doc-regata .doc-logo { height: 56px; width: 56px; object-fit: contain; }
+.doc-regata .doc-logo { height: 64px; width: auto; object-fit: contain; }
 .doc-regata .doc-club { font-weight: 800; font-size: 16px; letter-spacing: 1.2px; color: var(--azul-800); }
 .doc-regata .doc-sub { font-size: 12px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--gris-500); }
 .doc-regata h1 { text-align: center; font-size: 21px; letter-spacing: 2px; margin: 6px 0 14px; color: var(--azul-900); }
@@ -321,7 +325,7 @@ table.t tr.podio3 td { background: #fdf1e7; }
 .solo-movil { display: none; }
 
 @media (max-width: 640px) {
-  .topbar img { height: 48px; width: 48px; }
+  .topbar img { height: 60px; width: auto; }
   .hero h1 { font-size: 22px; }
   .solo-movil { display: inline-flex; }
   /* Filtros plegables: ver el comentario en index.html */
