@@ -29,6 +29,14 @@
   // Quién ve la sección Configuración: cualquiera que tenga al menos una de sus pestañas.
   const TABS_CFG_VISIBLES = [...new Set(Object.values(TABS_CFG).flat())];
 
+  /**
+   * De donde leer las inscripciones. El oficial de regata no tiene permiso sobre
+   * la tabla (ahi viven DNI, correo y telefono del timonel): lee de la vista
+   * v_inscripciones_regata, que trae solo barco, vela, clase, rating y timonel,
+   * que es con lo que arma la largada y puntua.
+   */
+  const fuenteInsc = () => (st.rol === 'oficial' ? 'v_inscripciones_regata' : 'inscripciones');
+
   /** Muestra/oculta según el rol los controles que disparan escrituras restringidas por RLS. */
   function aplicarPermisosUI() {
     U.$('#btnNuevoEvento').style.display = puede(ROL_COMISION) ? '' : 'none';
@@ -289,7 +297,7 @@
     st.eventos = data || [];
 
     // conteo de inscripciones por evento
-    const { data: ins } = await db.from('inscripciones').select('evento_id, estado');
+    const { data: ins } = await db.from(fuenteInsc()).select('evento_id, estado');
     const cuenta = {};
     (ins || []).forEach(i => {
       cuenta[i.evento_id] = cuenta[i.evento_id] || { t: 0, c: 0, p: 0 };
@@ -438,7 +446,7 @@
     const id = st.ev.id;
     const [ec, ins, pr] = await Promise.all([
       db.from('evento_clases').select('*').eq('evento_id', id).order('orden_largada'),
-      db.from('inscripciones').select('*').eq('evento_id', id).order('created_at'),
+      db.from(fuenteInsc()).select('*').eq('evento_id', id).order('created_at'),
       db.from('pruebas').select('*').eq('evento_id', id).order('numero')
     ]);
     st.evClases = (ec.data || []).map(x =>

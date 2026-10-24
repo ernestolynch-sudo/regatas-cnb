@@ -609,12 +609,28 @@ create policy insc_insert_publico on public.inscripciones for insert to anon, au
   );
 
 drop policy if exists insc_read_comision on public.inscripciones;
+-- Los datos personales del timonel (DNI, correo, telefono, emergencia) los ve
+-- quien gestiona inscripciones, no cualquier usuario del panel. El oficial de
+-- regata lee lo que necesita para puntuar desde la vista de abajo.
 create policy insc_read_comision on public.inscripciones for select to authenticated
-  using (public.es_usuario_habilitado());
+  using (public.es_secretaria());
 
 drop policy if exists insc_write_comision on public.inscripciones;
 create policy insc_write_comision on public.inscripciones for all to authenticated
   using (public.es_secretaria()) with check (public.es_secretaria());
+
+-- Lo que el oficial de regata necesita para armar la largada y puntuar: barco,
+-- numero de vela, clase, rating y timonel. Sin DNI, sin correo, sin telefono,
+-- sin contacto de emergencia. La vista corre con los permisos de su dueno, asi
+-- que el filtro de quien puede verla va adentro (mismo patron que v_bolsa_publica).
+create or replace view public.v_inscripciones_regata as
+  select id, evento_id, clase_id, estado,
+         num_vela, nombre_barco, modelo, club, codigo_flota,
+         rating, rating_origen, timonel_nombre, created_at
+    from public.inscripciones
+   where public.es_usuario_habilitado();
+
+grant select on public.v_inscripciones_regata to authenticated;
 
 -- --- inscripciones: AUTOSERVICIO del timonel (solo su propio email) --------
 -- Cualquier persona autenticada (magic link, no requiere estar en usuarios_autorizados)
@@ -908,8 +924,10 @@ create policy bolsa_insert_publico on public.bolsa_tripulantes for insert to ano
   with check (disponible = true and coalesce(notas, '') = '');
 
 drop policy if exists bolsa_read_comision on public.bolsa_tripulantes;
+-- El correo y el celular de quien se ofrece como tripulante los ve la Comision
+-- y secretaria, que son quienes los contactan. Lo publico sale de v_bolsa_publica.
 create policy bolsa_read_comision on public.bolsa_tripulantes for select to authenticated
-  using (public.es_usuario_habilitado());
+  using (public.es_secretaria());
 
 drop policy if exists bolsa_write_comision on public.bolsa_tripulantes;
 create policy bolsa_write_comision on public.bolsa_tripulantes for all to authenticated
