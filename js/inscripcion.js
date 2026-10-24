@@ -299,8 +299,8 @@
           <ol style="margin:7px 0 0;padding-left:20px">
             <li>La Comisión de Vela verifica documentación, seguro y arancel.</li>
             <li>Recibirás la confirmación por correo a <strong>${U.esc(reg.timonel_email)}</strong>.</li>
-            <li>Presentate en la reunión de timoneles${E.evento.hora_briefing ? ' a las ' + U.hora(E.evento.hora_briefing) + ' h' : ''}
-                con DNI, constancia de seguro${reg.autoriza_menor ? ' y la autorización del responsable legal' : ''}.</li>
+            <li>Presentate en la reunión de timoneles${E.evento.hora_briefing ? ' a las ' + U.hora(E.evento.hora_briefing) + ' h' : ''}${
+                reg.autoriza_menor ? ' con la autorización del responsable legal' : ''}.</li>
             <li>Podés consultar o corregir tus datos en cualquier momento desde
                 <a href="mi-inscripcion.html">Mi inscripción</a>, entrando con
                 <strong>${U.esc(reg.timonel_email)}</strong> y tu PIN.</li>
