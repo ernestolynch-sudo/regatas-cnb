@@ -4,11 +4,22 @@
  * ----------------------------------------------------------------------------
  * Implementa:
  *   1) Corrección de tiempos por handicap, SIEMPRE en base al rating CIC
- *      (en crucero no hay clases A/B/C: una sola clase PHRF y el rating iguala)
+ *      (en crucero no hay clases A/B/C: una sola clase PHRF y el rating iguala).
+ *      Las fórmulas son las de la «Planilla PHRF CNB» de la Comisión; ahí el
+ *      rating es un número del orden de 18 a 31 (a MAYOR rating, barco más
+ *      rápido), NO segundos por milla: los segundos por milla se derivan de él.
  *        · monotipo    → sin corrección (orden de llegada)
- *        · tot_phrf    → Tiempo sobre Tiempo PHRF: TCF = B / (A + Rating)
- *                        Tiempo corregido = Tiempo real × TCF        [DEFECTO CNB]
- *        · tod         → Tiempo sobre Distancia: TC = TR − (Rating[s/MN] × Distancia)
+ *        · tot_phrf    → Tiempo sobre Tiempo
+ *                          Tcf = (√rating + 2,6) / 10
+ *                          Tiempo corregido = Tiempo real × Tcf          [DEFECTO CNB]
+ *        · tod         → Tiempo sobre Distancia
+ *                          s/m = 5226 / (√rating + 2,6)
+ *                          Compensación = (s/m barco − s/m scratch) × distancia
+ *                          Tiempo corregido = Tiempo real − Compensación
+ *                        El scratch es el barco de MAYOR rating de la clase
+ *                        (o el valor que cargue el Comité).
+ *      En los dos, el tiempo real se redondea al segundo y el corregido
+ *      también (como el ROUND de la planilla).
  *   2) Sistema de Puntuación Baja — Apéndice A, RRV 2025-2028 (World Sailing / FAY)
  *        · A4  puntaje por puesto (1º = 1 punto ...)
  *        · A5  puntaje de barcos que no largan / no llegan / son descalificados
@@ -91,19 +102,16 @@
    */
   const SISTEMAS = {
     monotipo: 'Monotipo — sin corrección de tiempos',
-    tot_phrf: 'Tiempo sobre Tiempo (rating CIC) — TCF = B / (A + Rating)',
-    tod:      'Tiempo sobre Distancia (rating CIC) — Real − Rating × Millas'
+    tot_phrf: 'Tiempo sobre Tiempo (rating CIC) — Tcf = (√Rating + 2,6) / 10',
+    tod:      'Tiempo sobre Distancia (rating CIC) — compensación en s/milla contra el scratch'
   };
 
+  /** Constantes del sistema PHRF de la planilla del CNB (hoja «Config», «no modificar»). */
+  const PHRF = { SUMA_RAIZ: 2.6, DIVISOR_TCF: 10, SEG_MILLA: 5226 };
+
   /**
-   * Factor de corrección TCF para Tiempo sobre Tiempo PHRF.
-   * TCF = B / (A + Rating)   — valores usuales A = 550, B = 650 (s/MN).
-   * Un barco más rápido tiene rating MENOR y por lo tanto TCF MAYOR:
-   * su tiempo real se "castiga" al corregirlo.
-   */
-  /**
-   * Numero o null. Hace falta porque Number(null) y Number('') dan 0, y un rating
-   * o una distancia "vacios" se tomarian como 0: el tiempo saldria corregido mal
+   * Número o null. Hace falta porque Number(null) y Number('') dan 0, y un rating
+   * o una distancia "vacíos" se tomarían como 0: el tiempo saldría corregido mal
    * en lugar de quedar sin corregir.
    */
   function num(v) {
@@ -112,38 +120,80 @@
     return isFinite(n) ? n : null;
   }
 
-  function tcfPhrf(rating, A, B) {
-    const a = num(A) === null ? 550 : num(A);
-    const b = num(B) === null ? 650 : num(B);
+  /**
+   * Redondeo al entero como el ROUND de Excel. Excel redondea sobre los 15
+   * dígitos significativos que muestra, no sobre el binario: un producto que
+   * da 12850.499999999998 en coma flotante vale 12850,5 para la planilla y se
+   * redondea hacia arriba. Math.round pelado daría un segundo menos.
+   */
+  function redondear(x) {
+    return Math.round(Number(x.toPrecision(15)));
+  }
+
+  /** Rating válido para la raíz (no vacío, no negativo) o null. */
+  function ratingValido(rating) {
     const r = num(rating);
-    if (r === null || (a + r) === 0) return null;
-    return b / (a + r);
+    return r !== null && r >= 0 ? r : null;
   }
 
   /**
-   * Tiempo corregido, en segundos.
+   * Factor de corrección de Tiempo sobre Tiempo:  Tcf = (√rating + 2,6) / 10.
+   * A mayor rating, mayor Tcf: el barco más rápido corrige MÁS su tiempo real.
+   */
+  function tcfPhrf(rating) {
+    const r = ratingValido(rating);
+    if (r === null) return null;
+    return (Math.sqrt(r) + PHRF.SUMA_RAIZ) / PHRF.DIVISOR_TCF;
+  }
+
+  /** Segundos por milla del barco:  s/m = 5226 / (√rating + 2,6). */
+  function segPorMilla(rating) {
+    const r = ratingValido(rating);
+    if (r === null) return null;
+    return PHRF.SEG_MILLA / (Math.sqrt(r) + PHRF.SUMA_RAIZ);
+  }
+
+  /**
+   * Rating del scratch: el valor manual del Comité si lo cargó, y si no el MAYOR
+   * rating entre los barcos de la clase (el más rápido, el de menos s/m).
+   * @param {Array<number|null>} ratings  ratings de los barcos inscriptos
+   * @param {number|null}        manual   rating scratch cargado a mano (opcional)
+   */
+  function ratingScratch(ratings, manual) {
+    const m = ratingValido(manual);
+    if (m !== null) return m;
+    const validos = (ratings || []).map(ratingValido).filter(r => r !== null);
+    return validos.length ? Math.max.apply(null, validos) : null;
+  }
+
+  /**
+   * Tiempo corregido, en segundos enteros.
    * Devuelve null cuando no se puede corregir (falta el rating, falta la distancia
-   * en ToD, o el evento tiene un sistema que la app ya no usa): es preferible no
-   * mostrar resultado a mostrar uno mal corregido.
+   * o el scratch en ToD, o el evento tiene un sistema que la app ya no usa): es
+   * preferible no mostrar resultado a mostrar uno mal corregido.
    * @param {number}  tiempoRealS  tiempo navegado en segundos
-   * @param {object}  cfg          { sistema, phrf_a, phrf_b }
-   * @param {number}  rating       rating CIC del barco, en segundos por milla
+   * @param {object}  cfg          { sistema, rating_scratch } — rating_scratch es el
+   *                               rating del scratch ya resuelto (ver ratingScratch)
+   * @param {number}  rating       rating CIC del barco
    * @param {number}  distanciaMN  distancia del recorrido en millas náuticas (sólo ToD)
    */
   function tiempoCorregido(tiempoRealS, cfg, rating, distanciaMN) {
     if (tiempoRealS === null || tiempoRealS === undefined || !isFinite(tiempoRealS)) return null;
     const sistema = (cfg && cfg.sistema) || 'monotipo';
+    const real = redondear(tiempoRealS);        // la planilla redondea el real al segundo
     switch (sistema) {
       case 'monotipo':
-        return tiempoRealS;
+        return real;
       case 'tot_phrf': {
-        const tcf = tcfPhrf(rating, cfg.phrf_a, cfg.phrf_b);
-        return tcf === null ? null : tiempoRealS * tcf;
+        const tcf = tcfPhrf(rating);
+        return tcf === null ? null : redondear(real * tcf);
       }
       case 'tod': {
-        const r = num(rating), d = num(distanciaMN);
-        if (r === null || d === null) return null;
-        return tiempoRealS - (r * d);
+        const smBarco = segPorMilla(rating);
+        const smScratch = segPorMilla(cfg && cfg.rating_scratch);
+        const d = num(distanciaMN);
+        if (smBarco === null || smScratch === null || d === null) return null;
+        return redondear(real - (smBarco - smScratch) * d);
       }
       default:
         return null;
@@ -272,13 +322,18 @@
    *   pruebas       : [{ id, numero, estado, distancia_mn }]
    *   resultados    : [{ prueba_id, inscripcion_id, codigo, tiempo_real_s,
    *                      tiempo_corregido_s, puntos_manual, hora_largada, hora_llegada }]
-   *   config        : { sistema, phrf_a, phrf_b, descarte_desde, descarte_cada, descartes_max }
+   *   config        : { sistema, rating_scratch, descarte_desde, descarte_cada, descartes_max }
+   *                   rating_scratch es opcional: si falta, el scratch es el de mayor rating
+   *                   entre las `inscripciones` recibidas (la flota de la clase).
    * @returns {Object} { pruebas, filas, nSerie, descartes }
    */
   function calcularSerie(args) {
     const inscripciones = args.inscripciones || [];
-    const cfg           = Object.assign({ sistema: 'monotipo', phrf_a: 550, phrf_b: 650,
+    const cfg           = Object.assign({ sistema: 'monotipo',
                                           descarte_desde: 0, descarte_cada: 0, descartes_max: 0 }, args.config || {});
+    // El scratch se resuelve UNA vez para toda la serie: depende de toda la flota, no de un barco.
+    const cfgTiempos    = Object.assign({}, cfg,
+      { rating_scratch: ratingScratch(inscripciones.map(i => i.rating), cfg.rating_scratch) });
     const pruebas = (args.pruebas || [])
       .filter(p => p.estado === 'valida')
       .slice()
@@ -311,9 +366,14 @@
           ? Number(r.tiempo_real_s)
           : tiempoNavegado(r.hora_largada || p.hora_largada, r.hora_llegada);
 
-        let tc = (r.tiempo_corregido_s !== null && r.tiempo_corregido_s !== undefined)
-          ? Number(r.tiempo_corregido_s)
-          : tiempoCorregido(tr, cfg, ins.rating, p.distancia_mn);
+        // Siempre se recalcula desde el tiempo real con los ratings y el scratch de AHORA.
+        // El tiempo_corregido_s guardado se calculó con el scratch de ese momento: si después
+        // se corrigió un rating o se confirmó otro barco, en Tiempo sobre Distancia quedaría
+        // viejo. El guardado sólo se usa si por algún motivo no hay tiempo real.
+        let tc = (tr !== null && tr !== undefined)
+          ? tiempoCorregido(tr, cfgTiempos, ins.rating, p.distancia_mn)
+          : ((r.tiempo_corregido_s !== null && r.tiempo_corregido_s !== undefined)
+              ? Number(r.tiempo_corregido_s) : null);
 
         return {
           inscripcionId: ins.id,
@@ -446,7 +506,7 @@
   return {
     CODIGOS, SISTEMAS,
     hmsASegundos, segundosAHms, tiempoNavegado,
-    tcfPhrf, tiempoCorregido,
+    PHRF, tcfPhrf, segPorMilla, ratingScratch, tiempoCorregido,
     puntuarPrueba, cantidadDescartes, calcularSerie, serieACSV
   };
 });

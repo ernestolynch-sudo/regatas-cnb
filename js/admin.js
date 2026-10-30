@@ -37,6 +37,23 @@
    */
   const fuenteInsc = () => (st.rol === 'oficial' ? 'v_inscripciones_regata' : 'inscripciones');
 
+  /**
+   * Rating del scratch de una clase del evento: el que cargó el Comité a mano, y si no el
+   * MAYOR rating entre los barcos confirmados de esa clase (el más rápido). Es el mismo
+   * criterio de la planilla PHRF del CNB y sólo lo usa Tiempo sobre Distancia.
+   */
+  const scratchDeClase = ec => S.ratingScratch(
+    st.insc.filter(i => i.estado === 'confirmada' && i.clase_id === ec.clase_id).map(i => i.rating),
+    ec.rating_scratch);
+
+  /** Al lado del rating se muestra el factor que se aplica: Tcf en T en T, s/milla en T en D. */
+  const colFactor = sistema => (sistema === 'tod' ? 's/m' : 'TCF');
+  const valFactor = (sistema, rating) => (sistema === 'tod'
+    ? S.segPorMilla(rating)?.toFixed(1) : S.tcfPhrf(rating)?.toFixed(4)) ?? '—';
+
+  /** ¿La base ya tiene la columna del scratch manual? (se agrega con schema.sql) */
+  const hayScratchManual = () => st.evClases.length > 0 && 'rating_scratch' in st.evClases[0];
+
   /** Muestra/oculta según el rol los controles que disparan escrituras restringidas por RLS. */
   function aplicarPermisosUI() {
     U.$('#btnNuevoEvento').style.display = puede(ROL_COMISION) ? '' : 'none';
@@ -486,7 +503,7 @@
         Mientras siga así <strong>no se calculan tiempos corregidos</strong> en esas clases.
         Elegí «Tiempo sobre Tiempo» en la columna Sistema y guardá.</div>` : ''}
       ${st.evClases.length ? `<div class="tabla-wrap" style="margin-top:12px"><table class="t">
-        <thead><tr><th>Clase</th><th>Sistema</th><th class="num">A</th><th class="num">B</th>
+        <thead><tr><th>Clase</th><th>Sistema</th>${hayScratchManual() ? '<th class="num" title="Sólo Tiempo sobre Distancia. Vacío = el barco de mayor rating de la clase">Scratch manual</th>' : ''}
           <th class="num">Pruebas</th><th class="num">Mín.</th><th class="num">Desc. desde</th>
           <th class="num">Desc. cada</th><th class="num">Máx.</th><th>Bandera</th><th></th></tr></thead>
         <tbody>${st.evClases.map(c => `<tr data-ec="${c.id}">
@@ -497,8 +514,8 @@
             ${S.SISTEMAS[c.sistema] ? '' :
               `<option value="${U.esc(c.sistema)}" selected>&#9888; ${U.esc(c.sistema)} — sistema heredado, elegí uno</option>`}
           </select></td>
-          <td class="num"><input class="c-a" type="number" step="1" value="${c.phrf_a ?? 550}" style="width:74px"></td>
-          <td class="num"><input class="c-b" type="number" step="1" value="${c.phrf_b ?? 650}" style="width:74px"></td>
+          ${hayScratchManual() ? `<td class="num"><input class="c-sc" type="number" step="0.1" min="0" value="${c.rating_scratch ?? ''}"
+            placeholder="auto: ${scratchDeClase(c) ?? '—'}" style="width:92px;${c.sistema === 'tod' ? '' : 'display:none'}"></td>` : ''}
           <td class="num"><input class="c-pp" type="number" value="${c.pruebas_previstas ?? 3}" style="width:64px"></td>
           <td class="num"><input class="c-pm" type="number" value="${c.pruebas_minimas ?? 1}" style="width:64px"></td>
           <td class="num"><input class="c-dd" type="number" value="${c.descarte_desde ?? 4}" style="width:64px"></td>
@@ -511,14 +528,16 @@
         : '<p class="muted" style="margin-top:12px">Todavía no agregaste clases a este evento.</p>'}
       <div class="alert info small" style="margin-top:14px">
         <strong>Crucero:</strong> hay una sola clase, <em>Crucero PHRF</em>. No se separa por A / B / C:
-        lo único que iguala a los barcos es el <strong>rating del listado del CIC</strong>, en segundos
-        por milla náutica. Un barco sin rating cargado no puede puntuar, así que la Comisión le asigna
+        lo único que iguala a los barcos es el <strong>rating del listado del CIC</strong>. A mayor rating,
+        barco más rápido. Un barco sin rating cargado no puede puntuar, así que la Comisión le asigna
         uno provisorio antes de la primera prueba.<br>
-        <strong>Tiempo sobre Tiempo (lo que usa el CNB):</strong> <code>TCF = B / (A + Rating)</code> y
-        <code>Tiempo corregido = Tiempo real × TCF</code>. Con A=550 y B=650 un barco de rating 100
-        tiene TCF = 1,000. Bajar A endurece la corrección entre barcos de ratings distintos.<br>
-        <strong>Tiempo sobre Distancia:</strong> <code>Tiempo corregido = Tiempo real − Rating × Millas</code>.
+        <strong>Tiempo sobre Tiempo (lo que usa el CNB):</strong> <code>Tcf = (√Rating + 2,6) / 10</code> y
+        <code>Tiempo corregido = Tiempo real × Tcf</code>. Por ejemplo, rating 25 → Tcf 0,76.<br>
+        <strong>Tiempo sobre Distancia:</strong> <code>s/m = 5226 / (√Rating + 2,6)</code> y
+        <code>Tiempo corregido = Tiempo real − (s/m del barco − s/m del scratch) × Millas</code>.
+        El scratch es el barco de <strong>mayor rating</strong> de la clase (o el que cargue el Comité).
         Requiere cargar la distancia del recorrido en cada prueba.<br>
+        En los dos sistemas el tiempo real y el corregido se redondean al segundo.<br>
         <strong>Descartes:</strong> «desde 4 / cada 4 / máx. 2» significa 1 descarte al completarse
         4 pruebas válidas y 2 al completarse 8. Poner «desde 0» para no descartar.
       </div>
@@ -530,7 +549,6 @@
       await guardar('evento_clases', {
         evento_id: st.ev.id, clase_id: cl.id,
         sistema: cl.tipo === 'handicap' ? 'tot_phrf' : 'monotipo',
-        phrf_a: C.PHRF_A || 550, phrf_b: C.PHRF_B || 650,
         orden_largada: st.evClases.length + 1
       });
       await refrescarEvento(); tabClases();
@@ -541,13 +559,18 @@
       if (await borrar('evento_clases', id, '¿Quitar esta clase del evento?')) { await refrescarEvento(); tabClases(); }
     }));
 
+    U.$$('.c-sistema', p).forEach(sel => sel.addEventListener('change', () => {
+      const sc = U.$('.c-sc', sel.closest('tr'));
+      if (sc) sc.style.display = sel.value === 'tod' ? '' : 'none';
+    }));
+
     const btn = U.$('#btnGuardarClases');
     if (btn) btn.addEventListener('click', async () => {
       for (const tr of U.$$('tr[data-ec]', p)) {
         await guardar('evento_clases', {
           id: tr.dataset.ec,
           sistema: U.$('.c-sistema', tr).value,
-          phrf_a: +U.$('.c-a', tr).value, phrf_b: +U.$('.c-b', tr).value,
+          ...(hayScratchManual() ? { rating_scratch: U.$('.c-sc', tr).value === '' ? null : +U.$('.c-sc', tr).value } : {}),
           pruebas_previstas: +U.$('.c-pp', tr).value, pruebas_minimas: +U.$('.c-pm', tr).value,
           descarte_desde: +U.$('.c-dd', tr).value, descarte_cada: +U.$('.c-dc', tr).value,
           descartes_max: +U.$('.c-dm', tr).value,
@@ -831,8 +854,8 @@
       <div class="grid g3">
         <div class="field"><label>Modelo</label><input id="i_modelo" value="${U.esc(i.modelo || '')}"></div>
         <div class="field"><label>Club</label><input id="i_club" value="${U.esc(i.club || '')}"></div>
-        <div class="field"><label>Rating (s/MN)</label><input type="number" step="0.1" id="i_rating" value="${i.rating ?? ''}">
-          <div class="hint">Se toma el rating publicado en el listado del CIC.</div></div>
+        <div class="field"><label>Rating CIC</label><input type="number" step="0.01" min="0" id="i_rating" value="${i.rating ?? ''}">
+          <div class="hint">Rating del listado del CIC (ej. 25,2). A mayor rating, barco más rápido.</div></div>
       </div>
       <div class="grid g3">
         <div class="field"><label>Matrícula REY</label><input id="i_matricula_rey" value="${U.esc(i.matricula_rey || '')}"></div>
@@ -993,7 +1016,7 @@
         if (!l.length) return '';
         return `<section class="sec"><h2>${U.esc(c.nombre)} — ${l.length} barcos</h2>
           <table><tr><th>Nº vela</th><th>Barco</th><th>Timonel (DNI · nacimiento)</th><th>Tripulación (DNI · nacimiento)</th>
-          ${c.sistema !== 'monotipo' ? '<th>Rating</th><th>TCF</th>' : ''}
+          ${c.sistema !== 'monotipo' ? '<th>Rating</th><th>' + colFactor(c.sistema) + '</th>' : ''}
           <th>Salida</th><th>Regreso</th></tr>
           ${l.map(i => {
             const trip = i.tripulantes || [];
@@ -1003,7 +1026,7 @@
               ? trip.map(t => persona(t.nombre, t.dni, t.nacimiento)).join('<br>')
               : '________________________ · DNI __________ · Nac. __/__/____'}</td>
             ${c.sistema !== 'monotipo' ? '<td>' + (i.rating ?? '—') + '</td><td>' +
-              (S.tcfPhrf(i.rating, c.phrf_a, c.phrf_b)?.toFixed(4) ?? '—') + '</td>' : ''}
+              valFactor(c.sistema, i.rating) + '</td>' : ''}
             <td style="width:60px"></td><td style="width:60px"></td></tr>`;
           }).join('')}
         </table></section>`;
@@ -1117,6 +1140,15 @@
     if (!ins.length) { alert('No hay inscripciones confirmadas para esta prueba.'); return; }
     const prev = new Map(st.resultados.filter(r => r.prueba_id === pr.id).map(r => [r.inscripcion_id, r]));
 
+    // Para Tiempo sobre Distancia se muestra contra qué scratch se compensa (rating y s/milla).
+    const infoScratch = st.evClases
+      .filter(ec => ec.sistema === 'tod' && ins.some(i => i.clase_id === ec.clase_id))
+      .map(ec => {
+        const sc = scratchDeClase(ec);
+        return 'Scratch' + (st.evClases.length > 1 ? ' ' + (ec.nombre || '') : '') + ': ' +
+          (sc === null ? 'sin rating cargado' : 'rating ' + sc + ' (' + S.segPorMilla(sc).toFixed(1) + ' s/milla)');
+      }).join(' · ');
+
     const html = `
       <div class="row" style="margin-bottom:10px">
         <div class="field" style="margin:0"><label>Hora de largada de la prueba</label>
@@ -1125,7 +1157,8 @@
           <input type="number" step="0.01" id="l_dist" value="${pr.distancia_mn ?? ''}"></div>
         <div class="spacer"></div>
         <div class="small muted" style="max-width:340px">Cargá la hora de llegada (hh:mm:ss). Si un barco largó
-          con horario propio, completá su columna «Largada». El tiempo corregido se calcula solo.</div>
+          con horario propio, completá su columna «Largada». El tiempo corregido se calcula solo.
+          ${infoScratch ? '<br><strong>' + infoScratch + '</strong>' : ''}</div>
       </div>
       <div class="tabla-wrap"><table class="t">
         <thead><tr><th>Nº vela</th><th>Barco</th><th>Largada</th><th>Llegada</th><th>Código</th>
@@ -1168,7 +1201,9 @@
           const pm   = U.$('.r-pm', tr).value;
 
           const tr_s = (larg && lleg) ? S.tiempoNavegado(larg, lleg) : null;
-          const tc_s = tr_s !== null ? S.tiempoCorregido(tr_s, ec, i.rating, dist) : null;
+          const tc_s = tr_s !== null
+            ? S.tiempoCorregido(tr_s, Object.assign({}, ec, { rating_scratch: scratchDeClase(ec) }), i.rating, dist)
+            : null;
 
           const existente = prev.get(insId);
           const reg = {
@@ -1221,7 +1256,7 @@
         </div>
         <div class="tabla-wrap" style="margin-top:11px"><table class="t">
           <thead><tr><th class="num">Pos</th><th>Nº vela</th><th>Barco</th><th>Timonel</th>
-            ${hand ? '<th class="num">Rating</th><th class="num">TCF</th>' : ''}
+            ${hand ? '<th class="num">Rating</th><th class="num">' + colFactor(ec.sistema) + '</th>' : ''}
             ${serie.pruebas.map(p => '<th class="num">R' + p.numero + '</th>').join('')}
             <th class="num">Total</th></tr></thead>
           <tbody>${serie.filas.map(f => `<tr class="${f.posicion <= 3 ? 'podio' + f.posicion : ''}">
@@ -1230,7 +1265,7 @@
             <td>${U.esc(f.inscripcion.nombre_barco)}</td>
             <td>${U.esc(f.inscripcion.timonel_nombre)}</td>
             ${hand ? '<td class="num">' + (f.inscripcion.rating ?? '—') + '</td><td class="num">' +
-              (S.tcfPhrf(f.inscripcion.rating, ec.phrf_a, ec.phrf_b)?.toFixed(4) ?? '—') + '</td>' : ''}
+              valFactor(ec.sistema, f.inscripcion.rating) + '</td>' : ''}
             ${f.pruebas.map(x => `<td class="num ${x.descartado ? 'desc' : ''}">${x.descartado ? '(' : ''}${x.codigo !== 'OK' ? x.codigo + ' ' : ''}${x.puntos}${x.descartado ? ')' : ''}</td>`).join('')}
             <td class="num"><strong>${f.total}</strong></td>
           </tr>`).join('')}</tbody>

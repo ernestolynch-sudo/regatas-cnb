@@ -13,27 +13,60 @@ chk('navegado 13:00:00→14:35:20', S.tiempoNavegado('13:00:00', '14:35:20'), 57
 chk('cruce de medianoche', S.tiempoNavegado('23:30:00', '00:15:00'), 2700);
 chk('formato 5720 s', S.segundosAHms(5720), '1:35:20');
 
-console.log('\n2) PHRF Tiempo sobre Tiempo — TCF = B/(A+R), A=550 B=650');
-chk('R=100 → TCF 1.000', +S.tcfPhrf(100, 550, 650).toFixed(6), 1);
-chk('R=0   → TCF 1.181818', +S.tcfPhrf(0, 550, 650).toFixed(6), 1.181818);
-chk('R=200 → TCF 0.866667', +S.tcfPhrf(200, 550, 650).toFixed(6), 0.866667);
-// Barco rápido (R=60) 2h00m vs barco lento (R=180) 2h15m
-const cfg = { sistema: 'tot_phrf', phrf_a: 550, phrf_b: 650 };
-const tcRapido = S.tiempoCorregido(7200, cfg, 60);   // 7200 × 650/610 = 7672.13
-const tcLento  = S.tiempoCorregido(8100, cfg, 180);  // 8100 × 650/730 = 7212.33
-chk('TC barco rápido R=60', +tcRapido.toFixed(2), 7672.13);
-chk('TC barco lento  R=180', +tcLento.toFixed(2), 7212.33);
-chk('gana el lento por corregido', tcLento < tcRapido, true);
-// En crucero la clase no influye: dos barcos con el mismo rating corrigen igual
-chk('mismo rating → mismo corregido', S.tiempoCorregido(7200, cfg, 120),
-                                      S.tiempoCorregido(7200, cfg, 120));
-chk('sin rating no se puede corregir', S.tiempoCorregido(7200, cfg, null), null);
+console.log('\n2) Fórmulas de la planilla PHRF del CNB — Tcf = (√rating + 2,6) / 10');
+chk('rating 25 → Tcf 0,76', +S.tcfPhrf(25).toFixed(6), 0.76);
+chk('rating 30,5 → Tcf 0,812268', +S.tcfPhrf(30.5).toFixed(6), 0.812268);
+chk('rating 18,4 → Tcf 0,688952', +S.tcfPhrf(18.4).toFixed(6), 0.688952);
+chk('s/m rating 25 = 5226 / 7,6', +S.segPorMilla(25).toFixed(6), 687.631579);
+chk('rating vacío → sin Tcf', S.tcfPhrf(null), null);
+chk('rating vacío "" → sin Tcf', S.tcfPhrf(''), null);
+chk('rating negativo → sin Tcf', S.tcfPhrf(-4), null);
+chk('rating 0 sigue siendo válido (Tcf 0,26)', S.tcfPhrf(0), 0.26);
 
-console.log('\n3) Tiempo sobre Distancia — TC = TR − R×D');
-chk('TR 7200 s, R=30 s/MN, D=12 MN', S.tiempoCorregido(7200, { sistema: 'tod' }, 30, 12), 6840);
-chk('ToD sin distancia → null', S.tiempoCorregido(7200, { sistema: 'tod' }, 30, null), null);
+// ---- Caso de referencia: se cargó en la planilla del Comité (hojas Config y Planilla)
+// y la calculó un motor de hojas de cálculo. Largada 15:00:00, distancia 14 mn.
+// Los números de abajo son los que devolvió la PLANILLA, no los de esta app.
+const LARGADA = '15:00:00', DIST = 14;
+const flota = [   // nombre, rating, llegada, [T en T, pos], [T en D, pos]
+  ['Alfa',   25.0, '19:41:48', 16908, 12850, 4, 16289, 3],
+  ['Bravo',  25.2, '19:35:10', 16510, 12581, 2, 15916, 2],
+  ['Charly', 18.4, '20:10:05', 18605, 12818, 3, 16993, 5],
+  ['Delta',  22.0, '19:59:59', 17999, 13122, 5, 16971, 4],
+  ['Eco',    30.5, '18:50:00', 13800, 11209, 1, 13800, 1]
+];
+const scratch = S.ratingScratch(flota.map(f => f[1]));
+chk('scratch = el de mayor rating', scratch, 30.5);
+chk('s/m del scratch', +S.segPorMilla(scratch).toFixed(6), 643.383671);
 
-console.log('\n3 bis) Sistemas vigentes — sólo rating CIC');
+console.log('\n3) Tiempo sobre Tiempo contra la planilla');
+flota.forEach(([n, r, ll, real, tot]) => {
+  chk(n + ': tiempo real ' + ll, S.tiempoNavegado(LARGADA, ll), real);
+  chk(n + ': corregido T en T', S.tiempoCorregido(real, { sistema: 'tot_phrf' }, r), tot);
+});
+
+console.log('\n3 bis) Tiempo sobre Distancia contra la planilla');
+const cfgTod = { sistema: 'tod', rating_scratch: scratch };
+flota.forEach(([n, r, , real, , , tod]) => {
+  chk(n + ': corregido T en D', S.tiempoCorregido(real, cfgTod, r, DIST), tod);
+});
+chk('el scratch no se compensa a sí mismo', S.tiempoCorregido(13800, cfgTod, 30.5, DIST), 13800);
+chk('ToD sin distancia → null', S.tiempoCorregido(16908, cfgTod, 25, null), null);
+chk('ToD sin scratch → null', S.tiempoCorregido(16908, { sistema: 'tod' }, 25, DIST), null);
+chk('ToD sin rating → null', S.tiempoCorregido(16908, cfgTod, null, DIST), null);
+
+console.log('\n3 ter) Scratch');
+chk('scratch manual del Comité pisa al automático', S.ratingScratch([25, 30.5], 32), 32);
+chk('manual vacío → automático', S.ratingScratch([25, 30.5], ''), 30.5);
+chk('ignora barcos sin rating', S.ratingScratch([25, null, '', 22]), 25);
+chk('flota sin ratings → sin scratch', S.ratingScratch([null, '']), null);
+
+console.log('\n3 quater) Redondeo y sistemas');
+// El producto da 676,4999999999999 en coma flotante pero la planilla (Excel/LibreOffice
+// redondean sobre 15 dígitos) lo ve como 676,5 y sube. Math.round pelado daría 676.
+// OJO: este caso NO lo confirmó el motor de la herramienta (redondea en binario puro):
+// es el comportamiento documentado de Excel, a verificar en una planilla real.
+chk('empate exacto en .5 sube, como el ROUND de Excel', S.tiempoCorregido(1025, { sistema: 'tot_phrf' }, 16), 677);
+chk('el tiempo real también se redondea al segundo', S.tiempoCorregido(16908.4, { sistema: 'tot_phrf' }, 25), 12850);
 chk('los sistemas son monotipo, tot_phrf y tod',
     Object.keys(S.SISTEMAS).join(','), 'monotipo,tot_phrf,tod');
 chk('tot_factor ya no corrige', S.tiempoCorregido(7200, { sistema: 'tot_factor' }, 24.9), null);
@@ -105,25 +138,42 @@ chk('totales netos', serie.filas.map(f => [f.inscripcion.id, f.total]),
 chk('desempate A8.1 favorece al 3', serie.filas[2].inscripcion.id, '3');
 chk('posiciones 1..4', serie.filas.map(f => f.posicion), [1, 2, 3, 4]);
 
-console.log('\n7) Serie PHRF ToT con DNF y tiempos reales');
-const insC = [
-  { id: 'c1', num_vela: 'A 10', nombre_barco: 'Sudestada', timonel_nombre: 'E', club: 'CNB', rating: 60 },
-  { id: 'c2', num_vela: 'A 22', nombre_barco: 'Kayen',     timonel_nombre: 'F', club: 'CNB', rating: 180 },
-  { id: 'c3', num_vela: 'A 31', nombre_barco: 'Vendaval',  timonel_nombre: 'G', club: 'CNB', rating: 120 }
-];
-const serieC = S.calcularSerie({
-  inscripciones: insC,
-  pruebas: [{ id: 'q1', numero: 1, estado: 'valida', distancia_mn: 10, hora_largada: '14:00:00' }],
-  resultados: [
-    { prueba_id: 'q1', inscripcion_id: 'c1', codigo: 'OK',  hora_largada: '14:00:00', hora_llegada: '16:00:00' },
-    { prueba_id: 'q1', inscripcion_id: 'c2', codigo: 'OK',  hora_largada: '14:00:00', hora_llegada: '16:15:00' },
-    { prueba_id: 'q1', inscripcion_id: 'c3', codigo: 'DNF' }
-  ],
-  config: { sistema: 'tot_phrf', phrf_a: 550, phrf_b: 650, descarte_desde: 0 }
-});
-chk('gana Kayen por corregido', serieC.filas[0].inscripcion.nombre_barco, 'Kayen');
-chk('DNF puntúa inscriptos+1', serieC.filas[2].total, 4);
+console.log('\n7) Serie completa contra la planilla (T en T y T en D, con un DNF)');
+const insC = flota.map(([n, r], i) => ({ id: 'c' + i, num_vela: String(101 + i), nombre_barco: n,
+  timonel_nombre: 'T' + i, club: 'CNB', rating: r }));
+insC.push({ id: 'cF', num_vela: '106', nombre_barco: 'Foxtrot', timonel_nombre: 'TF', club: 'CNB', rating: 20 });
+const resC = flota.map(([, , ll], i) => ({ prueba_id: 'q1', inscripcion_id: 'c' + i, codigo: 'OK',
+  hora_largada: LARGADA, hora_llegada: ll }));
+resC.push({ prueba_id: 'q1', inscripcion_id: 'cF', codigo: 'DNF' });
+const pruebaC = [{ id: 'q1', numero: 1, estado: 'valida', distancia_mn: DIST, hora_largada: LARGADA }];
+
+const orden = sistema => S.calcularSerie({ inscripciones: insC, pruebas: pruebaC, resultados: resC,
+  config: { sistema, descarte_desde: 0 } }).filas.map(f => f.inscripcion.nombre_barco);
+chk('orden oficial en Tiempo sobre Tiempo (Eco, Bravo, Charly, Alfa, Delta, Foxtrot)',
+    orden('tot_phrf'), ['Eco', 'Bravo', 'Charly', 'Alfa', 'Delta', 'Foxtrot']);
+chk('orden oficial en Tiempo sobre Distancia (Eco, Bravo, Alfa, Delta, Charly, Foxtrot)',
+    orden('tod'), ['Eco', 'Bravo', 'Alfa', 'Delta', 'Charly', 'Foxtrot']);
+
+const serieC = S.calcularSerie({ inscripciones: insC, pruebas: pruebaC, resultados: resC,
+  config: { sistema: 'tot_phrf', descarte_desde: 0 } });
+chk('DNF puntúa inscriptos+1 (6 barcos → 7)', serieC.filas[5].total, 7);
 chk('sin descartes con 1 prueba', serieC.descartes, 0);
+
+// El corregido guardado en la base se calculó con el scratch de ese momento. Si después
+// se confirma un barco más rápido, la serie tiene que reflejarlo igual: se recalcula.
+const resViejos = resC.map(r => Object.assign({}, r, { tiempo_corregido_s: 1 }));   // valor guardado falso
+chk('ignora el corregido guardado y recalcula', S.calcularSerie({ inscripciones: insC, pruebas: pruebaC,
+  resultados: resViejos, config: { sistema: 'tot_phrf', descarte_desde: 0 } }).filas.map(f => f.inscripcion.nombre_barco),
+  ['Eco', 'Bravo', 'Charly', 'Alfa', 'Delta', 'Foxtrot']);
+const insNuevo = insC.concat([{ id: 'cZ', num_vela: '107', nombre_barco: 'Zeta', timonel_nombre: 'TZ', club: 'CNB', rating: 35 }]);
+const conZeta = S.calcularSerie({ inscripciones: insNuevo, pruebas: pruebaC,
+  resultados: resC.concat([{ prueba_id: 'q1', inscripcion_id: 'cZ', codigo: 'DNC' }]),
+  config: { sistema: 'tod', descarte_desde: 0 } });
+chk('un barco nuevo de mayor rating cambia el scratch y por lo tanto el ToD de todos',
+    conZeta.filas.slice(0, 5).map(f => f.inscripcion.nombre_barco), ['Eco', 'Bravo', 'Alfa', 'Delta', 'Charly']);
+chk('scratch manual en la config se respeta', S.calcularSerie({ inscripciones: insC, pruebas: pruebaC,
+  resultados: resC, config: { sistema: 'tod', rating_scratch: 30.5, descarte_desde: 0 } })
+  .filas.map(f => f.inscripcion.nombre_barco), ['Eco', 'Bravo', 'Alfa', 'Delta', 'Charly', 'Foxtrot']);
 
 console.log('\n8) CSV');
 const csv = S.serieACSV(serie, 'Campeonato de prueba');

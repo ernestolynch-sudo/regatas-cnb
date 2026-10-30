@@ -180,14 +180,19 @@ create table if not exists public.evento_clases (
   clase_id      uuid not null references public.clases(id) on delete restrict,
 
   -- Sistema de corrección de tiempos
-  -- En handicap la corrección depende SOLO del rating CIC del barco:
-  --   tot_phrf  Tiempo corregido = Tiempo real x phrf_b / (phrf_a + Rating)
-  --   tod       Tiempo corregido = Tiempo real - Rating x Distancia(MN)
+  -- En handicap la corrección depende SOLO del rating CIC del barco. Las fórmulas son
+  -- las de la planilla PHRF del CNB y viven en js/scoring.js (constantes 2,6 / 10 / 5226):
+  --   tot_phrf  Tcf = (raiz(Rating) + 2,6) / 10        Corregido = Real x Tcf
+  --   tod       s/m = 5226 / (raiz(Rating) + 2,6)      Corregido = Real - (s/m barco - s/m scratch) x Millas
   sistema       text not null default 'monotipo'
                 check (sistema in ('monotipo','tot_phrf','tod')),
-  -- Coeficientes PHRF Tiempo sobre Tiempo:  TCF = phrf_b / (phrf_a + Rating)
+  -- phrf_a y phrf_b eran los coeficientes del método anterior (TCF = B / (A + Rating)).
+  -- Ya NO se usan: se dejan para no perder el dato, pero no influyen en ningún cálculo.
   phrf_a        numeric(10,3) default 550,
   phrf_b        numeric(10,3) default 650,
+  -- Rating del scratch que fija el Comité (sólo Tiempo sobre Distancia). Vacío = el de
+  -- mayor rating entre los barcos confirmados de la clase.
+  rating_scratch numeric(6,2),
 
   -- Puntaje (Apéndice A RRV — Sistema de Puntuación Baja)
   pruebas_previstas smallint default 3,
@@ -201,6 +206,9 @@ create table if not exists public.evento_clases (
   created_at    timestamptz not null default now(),
   unique (evento_id, clase_id)
 );
+
+-- La tabla ya existía antes de esta columna: create table if not exists no la agrega.
+alter table public.evento_clases add column if not exists rating_scratch numeric(6,2);
 
 create index if not exists idx_evento_clases_evento on public.evento_clases(evento_id);
 
@@ -241,7 +249,7 @@ create table if not exists public.inscripciones (
   modelo        text,
   club          text default 'Club Náutico Bariloche',
   codigo_flota  text,                              -- código del registro de flota CNB (ej: OPT-C-001)
-  rating        numeric(10,3),                     -- PHRF s/milla (handicap) — null en monotipo
+  rating        numeric(10,3),                     -- rating CIC (handicap): a mayor rating, barco mas rapido — null en monotipo
   rating_origen text,                              -- 'CNB', 'FAY', 'ORC', 'provisorio'
   matricula_rey text,                              -- matrícula naval (REY), si la tiene — sólo PHRF/handicap
 

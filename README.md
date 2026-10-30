@@ -34,12 +34,17 @@ Test del motor de puntajes: `node js/scoring.test.js` (32 verificaciones).
 | Sistema | Fórmula | Uso |
 |---|---|---|
 | `monotipo` | sin corrección | Optimist, ILCA, Snipe, Pampero |
-| `tot_phrf` | `TC = TR × TCF`, con `TCF = B / (A + Rating)` — por defecto **A=550, B=650** | **Cruceros CNB** |
-| `tot_factor` | `TC = TR × Factor` | Estilo IRC (TCC declarado) |
-| `tod` | `TC = TR − (Rating[s/MN] × Distancia[MN])` | Tiempo sobre Distancia clásico |
+| `tot_phrf` | `Tcf = (√Rating + 2,6) / 10` y `TC = TR × Tcf` | **Cruceros CNB** (por defecto) |
+| `tod` | `s/m = 5226 / (√Rating + 2,6)` y `TC = TR − (s/m barco − s/m scratch) × Distancia[MN]` | Cruceros, cuando el Comité lo elige |
 
-Con A=550 y B=650, un barco de rating 100 tiene TCF = 1,000. Bajar `A` endurece la corrección
-entre barcos de ratings dispares; subirlo la suaviza. Ambos valores se editan por clase y por evento.
+Son las fórmulas de la **planilla PHRF del CNB** (`Planilla_PHRF_CNB.xlsx`, hoja «Método») y viven
+en `js/scoring.js`. El rating es el del listado del CIC, un número del orden de 18 a 31: **a mayor
+rating, barco más rápido** (no son segundos por milla; esos se derivan). El scratch es el barco de
+mayor rating de la clase, o el valor que cargue el Comité en «Scratch manual». El tiempo real y el
+corregido se redondean al segundo. En crucero hay una sola clase: no se separa por A / B / C.
+
+Los tiempos corregidos se **recalculan** al armar la clasificación, desde el tiempo real, con los
+ratings y el scratch de ese momento: corregir un rating o confirmar otro barco actualiza los resultados.
 
 **Puntaje** — Apéndice A del RRV 2025-2028:
 
@@ -117,8 +122,8 @@ Sin esto, el magic link redirige a `localhost` y el panel no abre.
 
 1. **Panel → Eventos → + Nuevo evento.** Código, nombre, fechas, briefing, 1ª señal de atención,
    área de regatas, VHF, aranceles, cierre de inscripción. Estado inicial: `borrador`.
-2. **Pestaña «Clases y puntaje».** Agregar cada clase y definir sistema, coeficientes PHRF,
-   pruebas previstas y descartes.
+2. **Pestaña «Clases y puntaje».** Agregar cada clase y definir sistema (Tiempo sobre Tiempo o
+   Distancia), scratch manual si hace falta, pruebas previstas y descartes.
 3. **Pestaña «Aviso e Instrucciones» → Generar nueva versión.** Sale el documento completo con los
    datos del evento cargados. Editar sección por sección lo que haga falta y **Publicar**.
 4. Pasar el evento a estado **`inscripcion_abierta`** (selector arriba a la derecha).

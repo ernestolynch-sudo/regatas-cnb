@@ -240,9 +240,9 @@
               <input id="m_club" value="${U.esc(i.club || '')}" ${editable ? '' : 'disabled'}></div>
           </div>
           ${cl.tipo === 'handicap' ? `<div class="grid g3">
-            <div class="field"><label>Rating PHRF (s/MN)</label>
-              <input type="number" step="0.1" id="m_rating" value="${i.rating ?? ''}" ${editable ? '' : 'disabled'}>
-              <div class="hint">Se toma el rating publicado en el listado del CIC.</div></div>
+            <div class="field"><label>Rating CIC</label>
+              <input type="number" step="0.01" min="0" id="m_rating" value="${i.rating ?? ''}" ${editable ? '' : 'disabled'}>
+              <div class="hint">Se toma el rating publicado en el listado del CIC (ej. 25,2).</div></div>
             <div class="field"><label>Origen del rating</label>
               <select id="m_rating_origen" ${editable ? '' : 'disabled'}>
                 <option value="">— seleccionar —</option>

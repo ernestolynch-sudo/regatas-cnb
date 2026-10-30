@@ -16,9 +16,5 @@ window.CNB_CONFIG = {
   CLUB: 'Club Náutico Bariloche',
   COMISION: 'Comisión de Vela y Motor',
   LOGO: 'assets/logo-cnb.png',
-  CANAL_VHF_DEFECTO: '71',
-
-  // Coeficientes PHRF Tiempo sobre Tiempo por defecto: TCF = B / (A + Rating)
-  PHRF_A: 550,
-  PHRF_B: 650
+  CANAL_VHF_DEFECTO: '71'
 };

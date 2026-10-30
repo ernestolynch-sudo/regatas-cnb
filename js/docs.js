@@ -42,8 +42,8 @@
   function nombreSistema(s) {
     return ({
       monotipo:   'sin corrección de tiempos (monotipo)',
-      tot_phrf:   'Tiempo sobre Tiempo con rating CIC, TCF = B / (A + Rating)',
-      tod:        'Tiempo sobre Distancia con rating CIC (segundos por milla náutica)',
+      tot_phrf:   'Tiempo sobre Tiempo con rating CIC, Tcf = (√Rating + 2,6) / 10',
+      tod:        'Tiempo sobre Distancia con rating CIC, compensación en segundos por milla contra el scratch',
       tot_factor: 'sistema heredado sin usar — reconfigurar la clase'
     })[s] || s;
   }
@@ -156,12 +156,17 @@
     add('Puntaje', `
       <p>10.1. Se aplicará el Sistema de Puntuación Baja del Apéndice A del RRV.</p>
       <p>10.2. Sistema de corrección de tiempos por clase: ${sistemas.join('; ')}.</p>
-      ${hayHandicap ? `<p>10.3. En la clase Crucero PHRF se aplicará Tiempo sobre Tiempo:
-      <br><code>Tiempo Corregido = Tiempo Real × TCF</code>, donde
-      <code>TCF = ${cls.find(c => c.sistema === 'tot_phrf')?.phrf_b || 650} / (${cls.find(c => c.sistema === 'tot_phrf')?.phrf_a || 550} + Rating)</code>
-      y el Rating es el del listado del CIC, expresado en segundos por milla náutica. El rating es el
-      único dato que interviene en la corrección: no se aplican coeficientes por clase ni por grupo.
-      Un barco sin rating declarado ni asignado no podrá puntuar.</p>` : ''}
+      ${hayHandicap ? `<p>10.3. En la clase Crucero PHRF la corrección de tiempos depende únicamente del
+      rating del listado del CIC (a mayor rating, barco más rápido). No se aplican coeficientes por
+      clase ni por grupo. Un barco sin rating declarado ni asignado no podrá puntuar. El tiempo real
+      y el tiempo corregido se redondean al segundo.</p>
+      ${cls.some(c => c.sistema === 'tot_phrf') ? `<p>10.3.1. <strong>Tiempo sobre Tiempo:</strong>
+      <code>Tcf = (√Rating + 2,6) / 10</code> y <code>Tiempo Corregido = Tiempo Real × Tcf</code>.</p>` : ''}
+      ${cls.some(c => c.sistema === 'tod') ? `<p>10.3.2. <strong>Tiempo sobre Distancia:</strong>
+      <code>s/m = 5226 / (√Rating + 2,6)</code> y
+      <code>Tiempo Corregido = Tiempo Real − (s/m del barco − s/m del scratch) × Distancia</code>, con la
+      distancia del recorrido en millas náuticas. El scratch es el barco de mayor rating de la clase,
+      salvo que el Comité de Regata determine otro valor.</p>` : ''}` : ''}
       <p>10.${hayHandicap ? '4' : '3'}. Descartes: ${cls.map(c =>
         c.nombre + ' — ' + (c.descarte_desde ? 'se descartará el peor puntaje al completarse ' +
         c.descarte_desde + ' pruebas válidas' : 'sin descarte')).join(' · ')}.</p>
