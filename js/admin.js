@@ -12,6 +12,8 @@
     usuario: null, rol: null,
     temporadas: [], clases: [], eventos: [],
     ev: null, evClases: [], insc: [], pruebas: [], resultados: [],
+    // Columnas nuevas que la base puede o no tener todavía (ver U.tieneColumna).
+    cols: { sinSpi: false, spinnaker: false },
     tabEv: 'clases', tabCfg: 'temporadas'
   };
 
@@ -42,9 +44,16 @@
    * MAYOR rating entre los barcos confirmados de esa clase (el más rápido). Es el mismo
    * criterio de la planilla PHRF del CNB y sólo lo usa Tiempo sobre Distancia.
    */
-  const scratchDeClase = ec => S.ratingScratch(
-    st.insc.filter(i => i.estado === 'confirmada' && i.clase_id === ec.clase_id).map(i => i.rating),
+  const scratchDeClase = (ec, spinDe) => S.ratingScratch(
+    st.insc.filter(i => i.estado === 'confirmada' && i.clase_id === ec.clase_id)
+      .map(i => S.ratingAplicado(i, spinDe ? spinDe(i) : null)),
     ec.rating_scratch);
+
+  /** Rating(s) del barco para mostrar: «25» o «25 / 23,5» (con / sin spinnaker). */
+  const ratingTxt = i => (i.rating ?? '—') + (i.rating_sin_spi != null ? ' / ' + i.rating_sin_spi : '');
+  /** Factor del barco para mostrar, uno por rating si tiene los dos. */
+  const factorTxt = (sistema, i) => [i.rating, i.rating_sin_spi]
+    .filter((r, k) => k === 0 || r != null).map(r => valFactor(sistema, r)).join(' / ');
 
   /** Al lado del rating se muestra el factor que se aplica: Tcf en T en T, s/milla en T en D. */
   const colFactor = sistema => (sistema === 'tod' ? 's/m' : 'TCF');
@@ -184,6 +193,10 @@
       return;
     }
     st.usuario = data; st.rol = data.rol;
+    // Rating sin spinnaker y spinnaker usado por prueba: se ofrecen cuando el SQL ya se corrió.
+    [st.cols.sinSpi, st.cols.spinnaker] = await Promise.all([
+      U.tieneColumna('inscripciones', 'rating_sin_spi'),
+      U.tieneColumna('resultados', 'spinnaker')]);
     U.$('#login').style.display = 'none';
     U.$('#app').style.display = '';
     U.$('#navPublico').style.display = 'none';
@@ -515,7 +528,7 @@
               `<option value="${U.esc(c.sistema)}" selected>&#9888; ${U.esc(c.sistema)} — sistema heredado, elegí uno</option>`}
           </select></td>
           ${hayScratchManual() ? `<td class="num"><input class="c-sc" type="number" step="0.1" min="0" value="${c.rating_scratch ?? ''}"
-            placeholder="auto: ${scratchDeClase(c) ?? '—'}" style="width:92px;${c.sistema === 'tod' ? '' : 'display:none'}"></td>` : ''}
+            placeholder="auto" style="width:92px;${c.sistema === 'tod' ? '' : 'display:none'}"></td>` : ''}
           <td class="num"><input class="c-pp" type="number" value="${c.pruebas_previstas ?? 3}" style="width:64px"></td>
           <td class="num"><input class="c-pm" type="number" value="${c.pruebas_minimas ?? 1}" style="width:64px"></td>
           <td class="num"><input class="c-dd" type="number" value="${c.descarte_desde ?? 4}" style="width:64px"></td>
@@ -777,7 +790,7 @@
               <td>${U.esc(i.nombre_barco)}</td>
               <td>${U.esc(i.timonel_nombre)}</td>
               <td>${U.esc(i.club || '')}</td>
-              <td class="num">${i.rating ?? '—'}</td>
+              <td class="num">${ratingTxt(i)}</td>
               <td class="small">${U.esc(i.timonel_tel || '')}</td>
               <td>${i.seguro_poliza ? '<span class="chip verde">Sí</span>' : '<span class="chip rojo">Falta</span>'}</td>
               <td class="small">${i.titular_transferencia ? U.esc(i.titular_transferencia) : '<span class="muted">(timonel)</span>'}</td>
@@ -854,10 +867,13 @@
       <div class="grid g3">
         <div class="field"><label>Modelo</label><input id="i_modelo" value="${U.esc(i.modelo || '')}"></div>
         <div class="field"><label>Club</label><input id="i_club" value="${U.esc(i.club || '')}"></div>
-        <div class="field"><label>Rating CIC</label><input type="number" step="0.01" min="0" id="i_rating" value="${i.rating ?? ''}">
+        <div class="field"><label>Rating CIC${st.cols.sinSpi ? ' con spinnaker' : ''}</label><input type="number" step="0.01" min="0" id="i_rating" value="${i.rating ?? ''}">
           <div class="hint">Rating del listado del CIC (ej. 25,2). A mayor rating, barco más rápido.</div></div>
       </div>
       <div class="grid g3">
+        ${st.cols.sinSpi ? `<div class="field"><label>Rating CIC sin spinnaker</label>
+          <input type="number" step="0.01" min="0" id="i_rating_sin_spi" value="${i.rating_sin_spi ?? ''}">
+          <div class="hint">Sólo si el barco tiene dos ratings. En cada prueba se aplica el que corresponda.</div></div>` : ''}
         <div class="field"><label>Matrícula REY</label><input id="i_matricula_rey" value="${U.esc(i.matricula_rey || '')}"></div>
       </div>
       <div class="grid g3">
@@ -918,6 +934,7 @@
         num_vela: g('num_vela').trim().toUpperCase(), nombre_barco: g('nombre_barco').trim(),
         modelo: g('modelo') || null, club: g('club') || null,
         rating: g('rating') === '' ? null : +g('rating'),
+        ...(st.cols.sinSpi ? { rating_sin_spi: g('rating_sin_spi') === '' ? null : +g('rating_sin_spi') } : {}),
         matricula_rey: g('matricula_rey').trim().toUpperCase() || null,
         timonel_nombre: g('timonel_nombre').trim(), timonel_email: g('timonel_email').trim(),
         timonel_tel: g('timonel_tel').trim(),
@@ -961,7 +978,9 @@
       { titulo: 'Clase', valor: i => (st.clases.find(c => c.id === i.clase_id) || {}).nombre || '' },
       { titulo: 'Nº vela', valor: 'num_vela' }, { titulo: 'Barco', valor: 'nombre_barco' },
       { titulo: 'Modelo', valor: 'modelo' }, { titulo: 'Club', valor: 'club' },
-      { titulo: 'Rating', valor: 'rating' }, { titulo: 'Matrícula REY', valor: 'matricula_rey' },
+      { titulo: 'Rating' + (st.cols.sinSpi ? ' con spi' : ''), valor: 'rating' },
+      ...(st.cols.sinSpi ? [{ titulo: 'Rating sin spi', valor: 'rating_sin_spi' }] : []),
+      { titulo: 'Matrícula REY', valor: 'matricula_rey' },
       { titulo: 'Timonel', valor: 'timonel_nombre' }, { titulo: 'DNI', valor: 'timonel_dni' },
       { titulo: 'Nacimiento', valor: 'timonel_nacimiento' },
       { titulo: 'Email', valor: 'timonel_email' }, { titulo: 'Teléfono', valor: 'timonel_tel' },
@@ -1025,8 +1044,8 @@
             <td style="white-space:normal">${trip.length
               ? trip.map(t => persona(t.nombre, t.dni, t.nacimiento)).join('<br>')
               : '________________________ · DNI __________ · Nac. __/__/____'}</td>
-            ${c.sistema !== 'monotipo' ? '<td>' + (i.rating ?? '—') + '</td><td>' +
-              valFactor(c.sistema, i.rating) + '</td>' : ''}
+            ${c.sistema !== 'monotipo' ? '<td>' + ratingTxt(i) + '</td><td>' +
+              factorTxt(c.sistema, i) + '</td>' : ''}
             <td style="width:60px"></td><td style="width:60px"></td></tr>`;
           }).join('')}
         </table></section>`;
@@ -1144,10 +1163,16 @@
     const infoScratch = st.evClases
       .filter(ec => ec.sistema === 'tod' && ins.some(i => i.clase_id === ec.clase_id))
       .map(ec => {
-        const sc = scratchDeClase(ec);
+        const sc = scratchDeClase(ec, i => (prev.get(i.id) || {}).spinnaker || null);
         return 'Scratch' + (st.evClases.length > 1 ? ' ' + (ec.nombre || '') : '') + ': ' +
           (sc === null ? 'sin rating cargado' : 'rating ' + sc + ' (' + S.segPorMilla(sc).toFixed(1) + ' s/milla)');
       }).join(' · ');
+
+    // Columna «Spinnaker»: sólo si la base la soporta y hay barcos con handicap en esta prueba.
+    const hayHand = st.cols.spinnaker && ins.some(i =>
+      (st.evClases.find(c => c.clase_id === i.clase_id) || {}).sistema !== 'monotipo');
+    // Un barco que figura con dos ratings tiene que declarar cuál usó; con uno solo no hay nada que elegir.
+    const dosRatings = i => i.rating_sin_spi != null;
 
     const html = `
       <div class="row" style="margin-bottom:10px">
@@ -1161,16 +1186,22 @@
           ${infoScratch ? '<br><strong>' + infoScratch + '</strong>' : ''}</div>
       </div>
       <div class="tabla-wrap"><table class="t">
-        <thead><tr><th>Nº vela</th><th>Barco</th><th>Largada</th><th>Llegada</th><th>Código</th>
+        <thead><tr><th>Nº vela</th><th>Barco</th>${hayHand ? '<th title="Rating aplicado: con o sin spinnaker según el que usó en esta prueba">Spinnaker</th>' : ''}<th>Largada</th><th>Llegada</th><th>Código</th>
           <th class="num">Puntos manual</th><th>Notas</th></tr></thead>
         <tbody>${ins.map(i => {
           const r = prev.get(i.id) || {};
           return `<tr data-ins="${i.id}">
             <td class="mono">${U.esc(i.num_vela)}</td>
             <td>${U.esc(i.nombre_barco)}${
-              i.rating != null ? ' <span class="chip small">R ' + i.rating + '</span>'
+              i.rating != null ? ' <span class="chip small">R ' + ratingTxt(i) + '</span>'
               : (st.evClases.find(c => c.clase_id === i.clase_id) || {}).sistema !== 'monotipo'
                 ? ' <span class="chip rojo small" title="Sin rating no se puede corregir el tiempo">sin rating</span>' : ''}</td>
+            ${hayHand ? `<td>${dosRatings(i)
+              ? `<select class="r-spi" style="width:104px${r.spinnaker ? '' : ';border-color:#c0392b'}">
+                  <option value="">— elegir —</option>
+                  <option value="con" ${r.spinnaker === 'con' ? 'selected' : ''}>Con spi</option>
+                  <option value="sin" ${r.spinnaker === 'sin' ? 'selected' : ''}>Sin spi</option></select>`
+              : '<span class="muted small">—</span>'}</td>` : ''}
             <td><input type="time" step="1" class="r-larg" value="${U.esc((r.hora_largada || '').slice(0,8))}" style="width:118px"></td>
             <td><input type="time" step="1" class="r-lleg" value="${U.esc((r.hora_llegada || '').slice(0,8))}" style="width:118px"></td>
             <td><select class="r-cod" style="width:112px">
@@ -1189,6 +1220,10 @@
         const largadaGral = U.$('#l_largada', bg).value;
         const dist = U.$('#l_dist', bg).value === '' ? null : +U.$('#l_dist', bg).value;
         const sinCorregir = [];
+        // Spinnaker declarado de TODOS los barcos antes de calcular: el scratch sale del mayor
+        // rating aplicado de la flota, así que no se puede resolver barco por barco.
+        const spinDe = new Map(U.$$('tr[data-ins]', bg).map(tr => [tr.dataset.ins, (U.$('.r-spi', tr) || {}).value || null]));
+        const spinOf = x => spinDe.get(x.id) ?? null;
         await guardar('pruebas', { id: pr.id, hora_largada: largadaGral || null, distancia_mn: dist, estado: 'valida' });
 
         for (const tr of U.$$('tr[data-ins]', bg)) {
@@ -1202,7 +1237,8 @@
 
           const tr_s = (larg && lleg) ? S.tiempoNavegado(larg, lleg) : null;
           const tc_s = tr_s !== null
-            ? S.tiempoCorregido(tr_s, Object.assign({}, ec, { rating_scratch: scratchDeClase(ec) }), i.rating, dist)
+            ? S.tiempoCorregido(tr_s, Object.assign({}, ec, { rating_scratch: scratchDeClase(ec, spinOf) }),
+                S.ratingAplicado(i, spinOf(i)), dist)
             : null;
 
           const existente = prev.get(insId);
@@ -1212,18 +1248,21 @@
             hora_llegada: lleg || null,
             tiempo_real_s: tr_s, tiempo_corregido_s: tc_s,
             codigo: cod, puntos_manual: pm === '' ? null : +pm,
-            notas: U.$('.r-nt', tr).value || null
+            notas: U.$('.r-nt', tr).value || null,
+            ...(st.cols.spinnaker ? { spinnaker: spinOf(i) } : {})
           };
           if (tr_s !== null && tc_s === null) sinCorregir.push(i.num_vela + ' ' + i.nombre_barco);
           if (existente) reg.id = existente.id;
-          if (!lleg && cod === 'OK' && !existente) continue;   // sin datos, no crear registro
+          // Sin llegada ni código no hay registro que crear, salvo que se haya declarado el spinnaker:
+          // ese dato cuenta para el scratch aunque el barco todavía no haya llegado (como en la planilla).
+          if (!lleg && cod === 'OK' && !existente && !spinOf(i)) continue;
           await guardar('resultados', reg);
         }
         if (sinCorregir.length)
           alert('Se guardaron las llegadas, pero estos barcos quedaron sin tiempo corregido:\n\n' +
                 sinCorregir.join('\n') +
-                '\n\nRevisá que tengan rating cargado (y la distancia de la prueba, si la clase ' +
-                'puntúa por Tiempo sobre Distancia).');
+                '\n\nRevisá que tengan rating cargado, que los barcos con dos ratings tengan el ' +
+                'spinnaker declarado, y la distancia de la prueba si la clase puntúa por Tiempo sobre Distancia.');
         await refrescarEvento(); tabPruebas();
       } }
     ]);
@@ -1264,8 +1303,8 @@
             <td class="mono">${U.esc(f.inscripcion.num_vela)}</td>
             <td>${U.esc(f.inscripcion.nombre_barco)}</td>
             <td>${U.esc(f.inscripcion.timonel_nombre)}</td>
-            ${hand ? '<td class="num">' + (f.inscripcion.rating ?? '—') + '</td><td class="num">' +
-              valFactor(ec.sistema, f.inscripcion.rating) + '</td>' : ''}
+            ${hand ? '<td class="num">' + ratingTxt(f.inscripcion) + '</td><td class="num">' +
+              factorTxt(ec.sistema, f.inscripcion) + '</td>' : ''}
             ${f.pruebas.map(x => `<td class="num ${x.descartado ? 'desc' : ''}">${x.descartado ? '(' : ''}${x.codigo !== 'OK' ? x.codigo + ' ' : ''}${x.puntos}${x.descartado ? ')' : ''}</td>`).join('')}
             <td class="num"><strong>${f.total}</strong></td>
           </tr>`).join('')}</tbody>

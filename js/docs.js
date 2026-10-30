@@ -160,6 +160,8 @@
       rating del listado del CIC (a mayor rating, barco más rápido). No se aplican coeficientes por
       clase ni por grupo. Un barco sin rating declarado ni asignado no podrá puntuar. El tiempo real
       y el tiempo corregido se redondean al segundo.</p>
+      <p>10.3.0. Los barcos con dos ratings en el listado del CIC (con y sin spinnaker) competirán con el
+      que corresponda al spinnaker que declaren usar en cada prueba.</p>
       ${cls.some(c => c.sistema === 'tot_phrf') ? `<p>10.3.1. <strong>Tiempo sobre Tiempo:</strong>
       <code>Tcf = (√Rating + 2,6) / 10</code> y <code>Tiempo Corregido = Tiempo Real × Tcf</code>.</p>` : ''}
       ${cls.some(c => c.sistema === 'tod') ? `<p>10.3.2. <strong>Tiempo sobre Distancia:</strong>

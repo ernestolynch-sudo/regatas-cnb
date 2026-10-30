@@ -67,6 +67,12 @@
           <div class="hint">Se toma el rating publicado en el <a href="https://www.cic.org.ar/subpaginas/listaderatings.html" target="_blank" rel="noopener">listado de ratings del CIC</a>.
             Si no tenés uno asignado, dejalo vacío: la Comisión de Vela asignará uno provisorio.</div>
         </div>
+        <div class="field" id="fldRatingSinSpi" style="display:none">
+          <label for="rating_sin_spi">Rating CIC sin spinnaker <span class="muted">(opcional)</span></label>
+          <input type="number" id="rating_sin_spi" step="0.01" min="0" placeholder="ej. 23,8">
+          <div class="hint">Sólo si tu barco figura en el listado con dos ratings. El día de la regata se aplica
+            el que corresponda según uses o no spinnaker. Si tiene uno solo, dejalo vacío.</div>
+        </div>
         <div class="field">
           <label for="rating_origen">Origen del rating</label>
           <select id="rating_origen">

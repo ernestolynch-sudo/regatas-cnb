@@ -173,6 +173,23 @@
 
     param: k => new URLSearchParams(location.search).get(k),
 
+    /**
+     * ¿Existe esta columna en la base? Sirve para encender una función nueva recién cuando
+     * el SQL que agrega su columna ya se corrió: el sitio se despliega solo con cada push,
+     * pero el SQL lo corre una persona, y en el medio ningún formulario puede romperse ni
+     * perder un dato. Pedir una columna inexistente da error; una existente da []/filas.
+     * Se pregunta una sola vez por página y tabla.columna.
+     */
+    async tieneColumna(tabla, columna) {
+      const clave = tabla + '.' + columna;
+      U._cols = U._cols || {};
+      if (!(clave in U._cols)) {
+        try { U._cols[clave] = !(await db.from(tabla).select(columna).limit(1)).error; }
+        catch (_) { U._cols[clave] = false; }
+      }
+      return U._cols[clave];
+    },
+
     /** PIN de 6 dígitos, aleatorio de verdad (crypto, no Math.random). */
     pinNuevo() {
       const n = new Uint32Array(1);

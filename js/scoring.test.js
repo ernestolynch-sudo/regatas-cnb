@@ -175,6 +175,56 @@ chk('scratch manual en la config se respeta', S.calcularSerie({ inscripciones: i
   resultados: resC, config: { sistema: 'tod', rating_scratch: 30.5, descarte_desde: 0 } })
   .filas.map(f => f.inscripcion.nombre_barco), ['Eco', 'Bravo', 'Alfa', 'Delta', 'Charly', 'Foxtrot']);
 
+console.log('\n7 bis) Rating con / sin spinnaker (rating aplicado)');
+const dosRatings = { rating: 25, rating_sin_spi: 23.5 }, unSolo = { rating: 18.4 };
+chk('usó spinnaker → rating con spi', S.ratingAplicado(dosRatings, 'con'), 25);
+chk('no usó spinnaker → rating sin spi', S.ratingAplicado(dosRatings, 'sin'), 23.5);
+chk('dos ratings y sin declarar spi → no se puede aplicar', S.ratingAplicado(dosRatings, null), null);
+chk('un solo rating y sin declarar spi → ese rating', S.ratingAplicado(unSolo, null), 18.4);
+chk('declaró «sin» pero no tiene rating sin spi → null', S.ratingAplicado(unSolo, 'sin'), null);
+chk('sólo tiene rating sin spi y no declaró → null', S.ratingAplicado({ rating_sin_spi: 20 }, null), null);
+chk('rating_sin_spi vacío cuenta como que no lo tiene', S.ratingAplicado({ rating: 18.4, rating_sin_spi: '' }, null), 18.4);
+
+console.log('\n7 ter) Carrera con spinnakers mixtos contra la planilla');
+// Mismo recorrido (15:00, 14 mn). Cargado en la planilla del Comité y calculado por ella:
+// aplicado = rating con o sin spi según el spinnaker usado; scratch = mayor rating APLICADO.
+const spi = [   // nombre, con, sin, spi usado, llegada, [T en T], [T en D]
+  ['Alfa',   25.0, 23.5, 'con', '19:41:48', 12850, 16552],
+  ['Bravo',  25.2, 24.0, 'sin', '19:35:10', 12381, 16025],
+  ['Charly', 18.4, null, 'con', '20:10:05', 12818, 17257],
+  ['Delta',  22.0, 20.5, 'sin', '19:59:59', 12829, 17005],
+  ['Eco',    30.5, 28.0, 'sin', '18:50:00', 10890, 13800]
+];
+const aplic = spi.map(f => S.ratingAplicado({ rating: f[1], rating_sin_spi: f[2] }, f[3]));
+chk('ratings aplicados', aplic, [25, 24, 18.4, 20.5, 28]);
+const scrSpi = S.ratingScratch(aplic);
+chk('el scratch sale de los ratings APLICADOS (28 y no 30,5)', scrSpi, 28);
+spi.forEach(([n, , , , ll, tot, tod], i) => {
+  const real = S.tiempoNavegado(LARGADA, ll);
+  chk(n + ': T en T con rating aplicado', S.tiempoCorregido(real, { sistema: 'tot_phrf' }, aplic[i]), tot);
+  chk(n + ': T en D con rating aplicado', S.tiempoCorregido(real, { sistema: 'tod', rating_scratch: scrSpi }, aplic[i], DIST), tod);
+});
+
+const insS = spi.map(([n, con, sin], i) => ({ id: 's' + i, num_vela: String(201 + i), nombre_barco: n,
+  timonel_nombre: 'T' + i, club: 'CNB', rating: con, rating_sin_spi: sin }));
+insS.push({ id: 'sF', num_vela: '206', nombre_barco: 'Foxtrot', timonel_nombre: 'TF', club: 'CNB', rating: 20, rating_sin_spi: 19 });
+insS.push({ id: 'sG', num_vela: '207', nombre_barco: 'Golf', timonel_nombre: 'TG', club: 'CNB', rating: 21, rating_sin_spi: 19.5 });
+const resS = spi.map(([, , , sp, ll], i) => ({ prueba_id: 'q1', inscripcion_id: 's' + i, codigo: 'OK',
+  hora_largada: LARGADA, hora_llegada: ll, spinnaker: sp }));
+resS.push({ prueba_id: 'q1', inscripcion_id: 'sF', codigo: 'DNF' });                       // sin spinnaker declarado
+resS.push({ prueba_id: 'q1', inscripcion_id: 'sG', codigo: 'OK', hora_largada: LARGADA, hora_llegada: '20:00:00' }); // tiene los 2 ratings y no declaró
+const serieS = sis => S.calcularSerie({ inscripciones: insS, pruebas: pruebaC, resultados: resS,
+  config: { sistema: sis, descarte_desde: 0 } });
+chk('orden oficial T en T (Eco, Bravo, Charly, Delta, Alfa)',
+    serieS('tot_phrf').filas.slice(0, 5).map(f => f.inscripcion.nombre_barco), ['Eco', 'Bravo', 'Charly', 'Delta', 'Alfa']);
+chk('orden oficial T en D (Eco, Bravo, Alfa, Delta, Charly)',
+    serieS('tod').filas.slice(0, 5).map(f => f.inscripcion.nombre_barco), ['Eco', 'Bravo', 'Alfa', 'Delta', 'Charly']);
+const golf = serieS('tod').filas.find(f => f.inscripcion.nombre_barco === 'Golf').pruebas[0];
+chk('Golf llegó pero no declaró spinnaker: queda sin tiempo corregido', golf.tiempoCorregidoS, null);
+chk('y sin rating aplicado', golf.ratingAplicado, null);
+const bravo = serieS('tod').filas.find(f => f.inscripcion.nombre_barco === 'Bravo').pruebas[0];
+chk('la serie informa el rating aplicado y el spinnaker de cada barco', [bravo.ratingAplicado, bravo.spinnaker], [24, 'sin']);
+
 console.log('\n8) CSV');
 const csv = S.serieACSV(serie, 'Campeonato de prueba');
 chk('CSV tiene encabezado de posiciones', csv.split('\n')[3].startsWith('Pos;'), true);

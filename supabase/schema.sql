@@ -249,7 +249,8 @@ create table if not exists public.inscripciones (
   modelo        text,
   club          text default 'Club Náutico Bariloche',
   codigo_flota  text,                              -- código del registro de flota CNB (ej: OPT-C-001)
-  rating        numeric(10,3),                     -- rating CIC (handicap): a mayor rating, barco mas rapido — null en monotipo
+  rating        numeric(10,3),                     -- rating CIC CON spinnaker (handicap): a mayor rating, barco mas rapido — null en monotipo
+  rating_sin_spi numeric(10,3),                    -- rating CIC SIN spinnaker, si el barco tiene los dos; null = sólo navega con spi
   rating_origen text,                              -- 'CNB', 'FAY', 'ORC', 'provisorio'
   matricula_rey text,                              -- matrícula naval (REY), si la tiene — sólo PHRF/handicap
 
@@ -316,6 +317,7 @@ alter table public.inscripciones add column if not exists licencia_fay_archivo_p
 alter table public.inscripciones add column if not exists matricula_rey             text;
 alter table public.inscripciones add column if not exists solicita_amarra_cortesia  boolean not null default false;
 alter table public.inscripciones add column if not exists titular_transferencia     text;
+alter table public.inscripciones add column if not exists rating_sin_spi             numeric(10,3);
 
 create index if not exists idx_insc_evento on public.inscripciones(evento_id);
 create index if not exists idx_insc_estado on public.inscripciones(estado);
@@ -404,7 +406,7 @@ begin
 
   insert into public.inscripciones (
     evento_id, clase_id, nombre_barco, num_vela, modelo, club, codigo_flota,
-    rating, rating_origen, matricula_rey,
+    rating, rating_sin_spi, rating_origen, matricula_rey,
     timonel_nombre, timonel_dni, timonel_nacimiento, timonel_email, timonel_tel,
     timonel_licencia_fay, timonel_socio, tripulantes,
     emergencia_nombre, emergencia_tel, solicita_amarra_cortesia,
@@ -416,7 +418,8 @@ begin
   ) values (
     v_evento_id, (p->>'clase_id')::uuid, p->>'nombre_barco', p->>'num_vela',
     p->>'modelo', p->>'club', p->>'codigo_flota',
-    nullif(p->>'rating','')::numeric, p->>'rating_origen', p->>'matricula_rey',
+    nullif(p->>'rating','')::numeric, nullif(p->>'rating_sin_spi','')::numeric,
+    p->>'rating_origen', p->>'matricula_rey',
     p->>'timonel_nombre', p->>'timonel_dni', nullif(p->>'timonel_nacimiento','')::date,
     p->>'timonel_email', p->>'timonel_tel',
     p->>'timonel_licencia_fay', coalesce((p->>'timonel_socio')::boolean, true),
@@ -480,11 +483,15 @@ create table if not exists public.resultados (
   puntos          numeric(8,2),  -- puntaje de la prueba (lo calcula la app)
   puntos_manual   numeric(8,2),  -- reparación (RDG) o puntaje impuesto por el jurado
   notas           text,
+  spinnaker       text check (spinnaker in ('con','sin')),  -- spinnaker usado en ESTA prueba (define el rating aplicado)
 
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now(),
   unique (prueba_id, inscripcion_id)
 );
+
+-- La tabla ya existía antes de esta columna: create table if not exists no la agrega.
+alter table public.resultados add column if not exists spinnaker text check (spinnaker in ('con','sin'));
 
 create index if not exists idx_res_prueba on public.resultados(prueba_id);
 
@@ -533,7 +540,8 @@ select i.id,
        i.club,
        i.rating,
        i.timonel_nombre,
-       i.estado
+       i.estado,
+       i.rating_sin_spi      -- la clasificacion publica necesita los dos ratings para aplicar el que corresponde
 from public.inscripciones i
 join public.eventos e on e.id = i.evento_id
 where e.estado <> 'borrador'
@@ -634,7 +642,7 @@ create policy insc_write_comision on public.inscripciones for all to authenticat
 create or replace view public.v_inscripciones_regata as
   select id, evento_id, clase_id, estado,
          num_vela, nombre_barco, modelo, club, codigo_flota,
-         rating, rating_origen, timonel_nombre, created_at
+         rating, rating_origen, timonel_nombre, created_at, rating_sin_spi
     from public.inscripciones
    where public.es_usuario_habilitado();
 

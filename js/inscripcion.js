@@ -41,6 +41,15 @@
     if (error || !ev) { U.aviso('#avisos', 'error', 'No se encontró el evento.'); return; }
     E.evento = ev;
 
+    // El rating sin spinnaker se pide recién cuando la base ya tiene dónde guardarlo.
+    // (El sitio se publica solo; el SQL lo corre una persona.) Si no, el dato se perdería
+    // en silencio y el timonel creería que quedó cargado.
+    E.ratingSinSpi = await U.tieneColumna('inscripciones', 'rating_sin_spi');
+    if (E.ratingSinSpi) {
+      U.$('#fldRatingSinSpi').style.display = '';
+      U.$('label[for=rating]').textContent = 'Rating CIC con spinnaker';
+    }
+
     U.$('#evSub').innerHTML = '<strong>' + U.esc(ev.nombre) + '</strong><br>' +
       U.rango(ev.fecha_inicio, ev.fecha_fin) + ' · ' + U.esc(ev.sede || 'Club Náutico Bariloche');
 
@@ -222,6 +231,7 @@
       club: U.$('#club').value.trim() || null,
       codigo_flota: U.$('#codigo_flota').value.trim().toUpperCase() || null,
       rating: U.$('#rating').value ? Number(U.$('#rating').value) : null,
+      rating_sin_spi: E.ratingSinSpi && U.$('#rating_sin_spi').value ? Number(U.$('#rating_sin_spi').value) : null,
       rating_origen: U.$('#rating_origen').value || null,
       matricula_rey: U.$('#matricula_rey').value.trim().toUpperCase() || null,
 

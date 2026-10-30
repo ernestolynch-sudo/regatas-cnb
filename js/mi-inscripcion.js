@@ -195,6 +195,8 @@
     const i = misInsc.find(x => x.id === id);
     if (!i) return;
     const editable = i.estado === 'pendiente';
+    // La fila viene de select('*'): si la base ya tiene la columna, la clave existe (aunque sea null).
+    const conSpi = 'rating_sin_spi' in i;
     const cl = i.clases || {};
     const ev = i.eventos || {};
     const ee = U.ESTADOS_INSC[i.estado] || {};
@@ -240,9 +242,12 @@
               <input id="m_club" value="${U.esc(i.club || '')}" ${editable ? '' : 'disabled'}></div>
           </div>
           ${cl.tipo === 'handicap' ? `<div class="grid g3">
-            <div class="field"><label>Rating CIC</label>
+            <div class="field"><label>Rating CIC${conSpi ? ' con spinnaker' : ''}</label>
               <input type="number" step="0.01" min="0" id="m_rating" value="${i.rating ?? ''}" ${editable ? '' : 'disabled'}>
               <div class="hint">Se toma el rating publicado en el listado del CIC (ej. 25,2).</div></div>
+            ${conSpi ? `<div class="field"><label>Rating CIC sin spinnaker <span class="muted">(opcional)</span></label>
+              <input type="number" step="0.01" min="0" id="m_rating_sin_spi" value="${i.rating_sin_spi ?? ''}" ${editable ? '' : 'disabled'}>
+              <div class="hint">Sólo si tu barco tiene dos ratings en el listado.</div></div>` : ''}
             <div class="field"><label>Origen del rating</label>
               <select id="m_rating_origen" ${editable ? '' : 'disabled'}>
                 <option value="">— seleccionar —</option>
@@ -394,6 +399,7 @@
           titular_transferencia: g('#m_titular_transferencia').trim() || null
         };
         if (U.$('#m_rating')) reg.rating = g('#m_rating') === '' ? null : Number(g('#m_rating'));
+        if (U.$('#m_rating_sin_spi')) reg.rating_sin_spi = g('#m_rating_sin_spi') === '' ? null : Number(g('#m_rating_sin_spi'));
         if (U.$('#m_rating_origen')) reg.rating_origen = g('#m_rating_origen') || null;
         if (U.$('#m_matricula_rey')) reg.matricula_rey = g('#m_matricula_rey').trim().toUpperCase() || null;
 

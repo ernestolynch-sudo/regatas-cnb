@@ -20,6 +20,9 @@
  *                        (o el valor que cargue el Comité).
  *      En los dos, el tiempo real se redondea al segundo y el corregido
  *      también (como el ROUND de la planilla).
+ *      Rating aplicado: un barco puede tener rating CON y SIN spinnaker; en cada
+ *      prueba se usa el del spinnaker que declaró. El scratch sale entonces del
+ *      mayor rating APLICADO de esa prueba, por lo que cambia de prueba en prueba.
  *   2) Sistema de Puntuación Baja — Apéndice A, RRV 2025-2028 (World Sailing / FAY)
  *        · A4  puntaje por puesto (1º = 1 punto ...)
  *        · A5  puntaje de barcos que no largan / no llegan / son descalificados
@@ -151,6 +154,26 @@
     const r = ratingValido(rating);
     if (r === null) return null;
     return PHRF.SEG_MILLA / (Math.sqrt(r) + PHRF.SUMA_RAIZ);
+  }
+
+  /**
+   * Rating que se aplica a un barco en una prueba, según el spinnaker que usó
+   * (columna «Rating aplicado» de la planilla):
+   *   · usó spinnaker      → su rating CON spinnaker  (`rating`)
+   *   · no usó spinnaker   → su rating SIN spinnaker  (`rating_sin_spi`)
+   *   · sin dato de spinnaker → si el barco tiene un solo rating (no tiene el «sin»),
+   *     se toma ese, porque no hay nada que elegir; si tiene los dos, devuelve null:
+   *     la planilla tampoco puntúa a un barco hasta que se declara cuál usó.
+   * @param {object} insc        inscripción: { rating, rating_sin_spi }
+   * @param {string} spinnaker   'con' | 'sin' | null/undefined
+   */
+  function ratingAplicado(insc, spinnaker) {
+    if (!insc) return null;
+    const con = ratingValido(insc.rating), sin = ratingValido(insc.rating_sin_spi);
+    const uso = spinnaker || (sin === null ? 'con' : null);
+    if (uso === 'con') return con;
+    if (uso === 'sin') return sin;
+    return null;
   }
 
   /**
@@ -318,10 +341,10 @@
   // -------------------------------------------------------------------------
   /**
    * @param {Object} args
-   *   inscripciones : [{ id, nombre_barco, num_vela, timonel_nombre, club, rating }]
+   *   inscripciones : [{ id, nombre_barco, num_vela, timonel_nombre, club, rating, rating_sin_spi }]
    *   pruebas       : [{ id, numero, estado, distancia_mn }]
    *   resultados    : [{ prueba_id, inscripcion_id, codigo, tiempo_real_s,
-   *                      tiempo_corregido_s, puntos_manual, hora_largada, hora_llegada }]
+   *                      tiempo_corregido_s, puntos_manual, hora_largada, hora_llegada, spinnaker }]
    *   config        : { sistema, rating_scratch, descarte_desde, descarte_cada, descartes_max }
    *                   rating_scratch es opcional: si falta, el scratch es el de mayor rating
    *                   entre las `inscripciones` recibidas (la flota de la clase).
@@ -331,9 +354,8 @@
     const inscripciones = args.inscripciones || [];
     const cfg           = Object.assign({ sistema: 'monotipo',
                                           descarte_desde: 0, descarte_cada: 0, descartes_max: 0 }, args.config || {});
-    // El scratch se resuelve UNA vez para toda la serie: depende de toda la flota, no de un barco.
-    const cfgTiempos    = Object.assign({}, cfg,
-      { rating_scratch: ratingScratch(inscripciones.map(i => i.rating), cfg.rating_scratch) });
+    // El scratch NO se resuelve acá sino prueba por prueba: depende de toda la flota y del
+    // spinnaker que usó cada barco ese día, así que cambia de una prueba a otra.
     const pruebas = (args.pruebas || [])
       .filter(p => p.estado === 'valida')
       .slice()
@@ -358,6 +380,12 @@
       const cargados = porPrueba.get(p.id) || [];
       const porInsc  = new Map(cargados.map(r => [r.inscripcion_id, r]));
 
+      // Rating aplicado de cada barco en ESTA prueba y scratch que sale de ellos.
+      const aplicados = new Map(inscripciones.map(ins =>
+        [ins.id, ratingAplicado(ins, (porInsc.get(ins.id) || {}).spinnaker)]));
+      const cfgTiempos = Object.assign({}, cfg,
+        { rating_scratch: ratingScratch(Array.from(aplicados.values()), cfg.rating_scratch) });
+
       const lineas = inscripciones.map(ins => {
         const r = porInsc.get(ins.id);
         if (!r) return { inscripcionId: ins.id, codigo: 'DNC', tiempoCorregidoS: null, puntosManual: null };
@@ -371,7 +399,7 @@
         // se corrigió un rating o se confirmó otro barco, en Tiempo sobre Distancia quedaría
         // viejo. El guardado sólo se usa si por algún motivo no hay tiempo real.
         let tc = (tr !== null && tr !== undefined)
-          ? tiempoCorregido(tr, cfgTiempos, ins.rating, p.distancia_mn)
+          ? tiempoCorregido(tr, cfgTiempos, aplicados.get(ins.id), p.distancia_mn)
           : ((r.tiempo_corregido_s !== null && r.tiempo_corregido_s !== undefined)
               ? Number(r.tiempo_corregido_s) : null);
 
@@ -380,6 +408,8 @@
           codigo: r.codigo || 'OK',
           tiempoRealS: tr,
           tiempoCorregidoS: tc,
+          ratingAplicado: aplicados.get(ins.id),
+          spinnaker: r.spinnaker || null,
           puntosManual: r.puntos_manual
         };
       });
@@ -394,6 +424,8 @@
           puesto: o.puesto, puntos: o.puntos, codigo: o.codigo,
           tiempoRealS: l ? l.tiempoRealS : null,
           tiempoCorregidoS: l ? l.tiempoCorregidoS : null,
+          ratingAplicado: l ? l.ratingAplicado : null,
+          spinnaker: l ? l.spinnaker : null,
           descartado: false
         });
       });
@@ -506,7 +538,7 @@
   return {
     CODIGOS, SISTEMAS,
     hmsASegundos, segundosAHms, tiempoNavegado,
-    PHRF, tcfPhrf, segPorMilla, ratingScratch, tiempoCorregido,
+    PHRF, tcfPhrf, segPorMilla, ratingAplicado, ratingScratch, tiempoCorregido,
     puntuarPrueba, cantidadDescartes, calcularSerie, serieACSV
   };
 });

@@ -330,6 +330,7 @@
       const c = estado.clases.find(x => x.id === cid) || { nombre: 'Clase' };
       const lista = porClase[cid].sort((a, b) => String(a.num_vela).localeCompare(String(b.num_vela), 'es', { numeric: true }));
       const handicap = lista.some(x => x.rating !== null && x.rating !== undefined);
+      const ratingTxt = x => (x.rating ?? '—') + (x.rating_sin_spi != null ? ' / ' + x.rating_sin_spi : '');
       return `<div class="card"><h2>${U.esc(c.nombre)} <span class="chip">${lista.length} barcos</span></h2>
         <div class="tabla-wrap"><table class="t">
           <thead><tr><th class="num">#</th><th>Nº vela</th><th>Barco</th><th>Timonel</th><th>Club</th>
@@ -340,7 +341,7 @@
             <td>${U.esc(i.nombre_barco)}</td>
             <td>${U.esc(i.timonel_nombre)}</td>
             <td>${U.esc(i.club || '')}</td>
-            ${handicap ? '<td class="num">' + (i.rating ?? '—') + '</td>' : ''}
+            ${handicap ? '<td class="num">' + ratingTxt(i) + '</td>' : ''}
             <td><span class="chip ${(U.ESTADOS_INSC[i.estado] || {}).chip || ''}">${(U.ESTADOS_INSC[i.estado] || {}).txt || i.estado}</span></td>
           </tr>`).join('')}</tbody></table></div></div>`;
     }).join('');
@@ -417,9 +418,13 @@
           <td>${U.esc(f.inscripcion.nombre_barco)}</td>
           <td>${U.esc(f.inscripcion.timonel_nombre)}</td>
           <td>${U.esc(f.inscripcion.club || '')}</td>
-          ${hand ? '<td class="num">' + (f.inscripcion.rating ?? '—') + '</td>' : ''}
+          ${hand ? '<td class="num">' + (f.inscripcion.rating ?? '—') +
+            (f.inscripcion.rating_sin_spi != null ? ' / ' + f.inscripcion.rating_sin_spi : '') + '</td>' : ''}
           ${f.pruebas.map(x => `<td class="num ${x.descartado ? 'desc' : ''}"
-             title="${x.codigo !== 'OK' ? U.esc((S.CODIGOS[x.codigo] || {}).label || x.codigo) : ''}">
+             title="${U.esc([x.codigo !== 'OK' ? ((S.CODIGOS[x.codigo] || {}).label || x.codigo) : '',
+               hand && x.ratingAplicado != null ? 'Rating aplicado ' + x.ratingAplicado +
+                 (x.spinnaker ? (x.spinnaker === 'sin' ? ' (sin spinnaker)' : ' (con spinnaker)') : '') : ''
+             ].filter(Boolean).join(' · '))}">
              ${x.descartado ? '(' : ''}${x.codigo !== 'OK' ? x.codigo + ' ' : ''}${x.puntos}${x.descartado ? ')' : ''}</td>`).join('')}
           <td class="num"><strong>${f.total}</strong></td>
         </tr>`).join('')}</tbody>

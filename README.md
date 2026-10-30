@@ -43,6 +43,11 @@ rating, barco más rápido** (no son segundos por milla; esos se derivan). El sc
 mayor rating de la clase, o el valor que cargue el Comité en «Scratch manual». El tiempo real y el
 corregido se redondean al segundo. En crucero hay una sola clase: no se separa por A / B / C.
 
+**Spinnaker.** Un barco puede tener rating con y sin spinnaker (`rating` y `rating_sin_spi` en la
+inscripción). En cada prueba el oficial declara cuál usó (`resultados.spinnaker`) y se aplica ese
+rating; el scratch sale del mayor rating *aplicado* de esa prueba. Un barco con un solo rating no
+necesita declarar nada; uno con dos queda sin tiempo corregido hasta que se declara.
+
 Los tiempos corregidos se **recalculan** al armar la clasificación, desde el tiempo real, con los
 ratings y el scratch de ese momento: corregir un rating o confirmar otro barco actualiza los resultados.
 
