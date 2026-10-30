@@ -8,6 +8,7 @@
   'use strict';
   const S = window.Scoring, D = window.DocsRegata, C = window.CNB_CONFIG || {};
 
+  let saliendo = false;   // true cuando la persona toca «Cerrar sesión» (para no confundirlo con una sesión caída)
   const st = {
     usuario: null, rol: null,
     temporadas: [], clases: [], eventos: [],
@@ -114,7 +115,7 @@
     U.$('#btnGuardarNuevoPin').addEventListener('click', guardarNuevoPin);
     U.$('#nuevoPin').addEventListener('keydown', e => { if (e.key === 'Enter') guardarNuevoPin(); });
 
-    U.$('#btnSalir').addEventListener('click', async () => { await db.auth.signOut(); location.reload(); });
+    U.$('#btnSalir').addEventListener('click', async () => { saliendo = true; await db.auth.signOut(); location.reload(); });
 
     // El link de "configurar/recuperar PIN" deja una sesión activa para poder guardar el PIN
     // nuevo, pero NO debe dejar entrar al panel directo: hay que mostrar primero la pantalla
@@ -128,6 +129,13 @@
     // adentro queda esperando el candado para siempre. Diferirla un tick lo evita.
     db.auth.onAuthStateChange((evt, s) => {
       if (evt === 'PASSWORD_RECOVERY') { mostrarNuevoPin(); return; }
+      // La sesión se cayó con el panel abierto (venció y no pudo renovarse): sin esto la pantalla
+      // sigue pareciendo activa y los cambios se pierden sin explicación. Diferido por el mismo
+      // motivo que el resto: supabase-js retiene un candado mientras corre este callback.
+      if (evt === 'SIGNED_OUT' && st.usuario && !saliendo) {
+        setTimeout(() => { alert('Tu sesión venció. Ingresá de nuevo con tu correo y PIN.'); location.reload(); }, 0);
+        return;
+      }
       if (s && !st.usuario) {
         if (pidiendoPin) mostrarNuevoPin();
         else setTimeout(() => verificar(s), 0);
@@ -258,18 +266,43 @@
       st.temporadas.map(x => `<option value="${x.id}" ${act && x.id === act.id ? 'selected' : ''}>${U.esc(x.nombre)}</option>`).join('');
   }
 
+  /**
+   * Cuando la base contesta sin error pero sin filas, es que las políticas de seguridad
+   * descartaron el cambio en silencio. Hay dos causas y se distinguen mirando la sesión:
+   * venció (la base trata el pedido como anónimo) o el usuario no tiene permiso.
+   */
+  async function explicarRechazo() {
+    const { data } = await db.auth.getSession();
+    if (!data || !data.session)
+      return 'Tu sesión venció y no se guardó nada. Recargá la página e ingresá de nuevo con tu correo y PIN.';
+    return 'La base rechazó el cambio: tu usuario (' + ((st.usuario || {}).email || '—') + ', rol ' + (st.rol || '—') +
+      ') no tiene permiso para modificar esto, o el registro ya no existe. Si creés que es un error, ' +
+      'cerrá sesión, ingresá de nuevo y probá otra vez.';
+  }
+
   async function guardar(tabla, reg) {
-    const { data, error } = reg.id
-      ? await db.from(tabla).update(reg).eq('id', reg.id).select().single()
-      : await db.from(tabla).insert(reg).select().single();
+    // maybeSingle y no single: single() convierte "0 filas" en el error críptico
+    // «Cannot coerce the result to a single JSON object», que no dice qué pasó.
+    const q = reg.id
+      ? db.from(tabla).update(reg).eq('id', reg.id)
+      : db.from(tabla).insert(reg);
+    const { data, error } = await q.select().maybeSingle();
     if (error) { alert('Error: ' + U.err(error)); throw error; }
+    if (!data) {
+      const motivo = await explicarRechazo();
+      alert('Error: ' + motivo);
+      throw new Error(motivo);
+    }
     return data;
   }
 
   async function borrar(tabla, id, msg) {
     if (!confirm(msg || '¿Confirmás la eliminación? Esta acción no se puede deshacer.')) return false;
-    const { error } = await db.from(tabla).delete().eq('id', id);
+    // select('id') para saber si realmente se borró algo: un DELETE que las políticas descartan
+    // contesta 204 igual que uno exitoso, y el panel mostraría borrado algo que sigue ahí.
+    const { data, error } = await db.from(tabla).delete().eq('id', id).select('id');
     if (error) { alert('Error: ' + U.err(error)); return false; }
+    if (!data || !data.length) { alert('Error: ' + await explicarRechazo()); return false; }
     return true;
   }
 
