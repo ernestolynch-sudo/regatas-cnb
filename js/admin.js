@@ -50,6 +50,21 @@
       .map(i => S.ratingAplicado(i, spinDe ? spinDe(i) : null)),
     ec.rating_scratch);
 
+  /**
+   * Estado del seguro en la lista. «Sí» es que HAY constancia adjunta: antes decía «Sí» con sólo
+   * haber escrito un número de póliza, y la ficha después no mostraba ningún documento.
+   * El seguro es opcional para regatear y obligatorio sólo con amarra de cortesía / fondeadero,
+   * así que «Falta» en rojo se reserva para ese caso.
+   */
+  const chipSeguro = i => {
+    if (i.seguro_archivo_path) return '<span class="chip verde" title="Constancia adjunta">Sí</span>';
+    if (i.seguro_poliza || i.seguro_compania)
+      return '<span class="chip naranja" title="Cargó compañía o póliza pero no adjuntó la constancia">Sin constancia</span>';
+    return i.solicita_amarra_cortesia
+      ? '<span class="chip rojo" title="Pidió amarra de cortesía o fondeadero: el seguro es obligatorio">Falta</span>'
+      : '<span class="muted small" title="No es obligatorio para regatear">—</span>';
+  };
+
   /** Rating(s) del barco para mostrar: «25» o «25 / 23,5» (con / sin spinnaker). */
   const ratingTxt = i => (i.rating ?? '—') + (i.rating_sin_spi != null ? ' / ' + i.rating_sin_spi : '');
   /** Factor del barco para mostrar, uno por rating si tiene los dos. */
@@ -825,7 +840,7 @@
               <td>${U.esc(i.club || '')}</td>
               <td class="num">${ratingTxt(i)}</td>
               <td class="small">${U.esc(i.timonel_tel || '')}</td>
-              <td>${i.seguro_poliza ? '<span class="chip verde">Sí</span>' : '<span class="chip rojo">Falta</span>'}</td>
+              <td>${chipSeguro(i)}</td>
               <td class="small">${i.titular_transferencia ? U.esc(i.titular_transferencia) : '<span class="muted">(timonel)</span>'}</td>
               <td><span class="chip ${ee.chip || ''}">${ee.txt || i.estado}</span></td>
               <td><span class="chip ${i.pago_estado === 'pagado' ? 'verde' : i.pago_estado === 'exento' ? 'azul' : 'naranja'}">${i.pago_estado}</span></td>
